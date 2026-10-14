@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KPI-Card · Tableaux de bord</title>
+  <link rel="stylesheet" href="editor.css?v=eff4ebb8e65a">
+  <script defer src="data.js?v=67aca740e061"></script>
+  <script defer src="layout.js?v=d862d2a76f64"></script>
+  <script defer src="dashboards.js?v=9ff723197bb8"></script>
+  <script defer src="editor.js?v=0fdae19f6beb"></script>
+</head>
+<body>
+  <main id="editor" class="editor" aria-label="Vos tableaux de bord KPI-Card">
+    <div id="breadcrumb" class="breadcrumb" hidden></div>
+    <header class="editor-toolbar">
+      <div>
+        <div class="eyebrow"><span id="eyebrow-label">VOTRE ESPACE KPI-CARD</span><span class="poc-badge">POC</span></div>
+        <h1 id="page-title">Vos tableaux de bord.</h1>
+        <p id="mode-description">Tous vos indicateurs, un espace pour les retrouver.</p>
+      </div>
+      <div class="toolbar-actions" id="toolbar-actions"></div>
+    </header>
+    <section id="hub" aria-label="Tous les tableaux de bord">
+      <div class="hub-controls">
+        <div><h2>Ma collection <span id="dashboard-count" class="count-badge"></span></h2><p>Des tableaux à explorer, adapter et créer.</p></div>
+        <label class="search-field"><span class="sr-only">Rechercher un tableau de bord</span><input id="dashboard-search" type="search" placeholder="Rechercher un tableau…" autocomplete="off"></label>
+      </div>
+      <div id="hub-filters" class="hub-filters" role="group" aria-label="Filtrer les tableaux de bord"></div>
+      <div id="undo-delete" class="undo-delete" hidden></div>
+      <section id="create-panel" class="create-panel" aria-label="Créer un tableau de bord" hidden>
+        <div class="panel-heading"><h2>Un nouveau tableau, à votre façon.</h2><button id="close-create" class="button small" type="button">Annuler</button></div>
+        <form id="create-form">
+          <div class="create-fields">
+            <label class="field-label">Nom du tableau<input id="new-name" class="field" required maxlength="90" placeholder="Ex. Mon suivi hebdomadaire"></label>
+            <label class="field-label">Point de départ<select id="new-template" class="field"></select></label>
+            <label class="field-label create-description">Description<input id="new-description" class="field" maxlength="240" placeholder="Ce que vous souhaitez suivre…"></label>
+          </div>
+          <button class="button primary" type="submit">Créer et personnaliser</button>
+        </form>
+      </section>
+      <div id="dashboard-grid" class="dashboard-grid"></div>
+      <p class="hub-footnote">Les exemples contiennent des données fictives. Votre collection est enregistrée dans ce navigateur.</p>
+    </section>
+    <section id="board-filters" class="board-filters" aria-label="Période du tableau de bord" hidden>
+      <label for="view-period" class="period-label">Période du tableau<select id="view-period" class="field"></select></label>
+      <div><p id="board-period-summary"></p><p class="hint">Données fictives · Les blocs peuvent utiliser leur propre période.</p></div>
+    </section>
+    <div id="workspace" class="workspace" hidden>
+      <section class="canvas-area" aria-label="Zone de contenu sur six colonnes">
+        <div id="canvas-heading" class="canvas-heading" hidden>
+          <span><span class="live-dot"></span> ZONE MODIFIABLE</span>
+          <span>6 colonnes · Glissez vos blocs</span>
+        </div>
+        <div id="column-guides" class="column-guides" aria-hidden="true" hidden></div>
+        <div id="canvas" class="canvas"></div>
+        <button id="add-row" class="add-row" type="button" hidden>+ Ajouter une ligne</button>
+      </section>
+      <aside id="sidebar" class="sidebar" aria-label="Panneau de modification" hidden>
+        <section class="dashboard-settings">
+          <h2>Votre tableau</h2>
+          <label class="field-label" for="dashboard-name">Nom</label>
+          <input id="dashboard-name" class="field" maxlength="90" required>
+          <label class="field-label" for="dashboard-description">Description</label>
+          <textarea id="dashboard-description" class="field" rows="2" maxlength="240"></textarea>
+          <label class="field-label" for="dashboard-period">Période par défaut</label>
+          <select id="dashboard-period" class="field"></select>
+          <p class="width-help">Appliquée aux graphiques et cartes qui suivent la période du tableau.</p>
+        </section>
+        <div class="panel-heading"><h2>Ajouter un bloc</h2><span class="panel-label">BIBLIOTHÈQUE</span></div>
+        <p class="hint">Glissez un bloc sur la grille, ou cliquez dessus puis sur une case libre.</p>
+        <div id="palette" class="palette"></div>
+        <div id="placement-hint" class="placement-hint" hidden></div>
+        <section id="inspector" class="inspector" aria-label="Réglages du bloc"></section>
+        <p class="storage-note">« Enregistrer » conserve ce tableau dans votre navigateur.</p>
+      </aside>
+    </div>
+    <section id="data-panel" class="data-panel" aria-labelledby="data-title" hidden>
+      <button id="close-data" class="breadcrumb-button" type="button">← Retour</button>
+      <div class="data-heading">
+        <div><div class="eyebrow">EXPLORER LES DONNÉES <span class="poc-badge">FICTIVES</span></div><h2 id="data-title" tabindex="-1">Données sources</h2><p id="data-description" class="hint"></p></div>
+        <button id="download-csv" class="button primary" type="button">Télécharger en CSV</button>
+      </div>
+      <div id="source-controls" class="source-controls" hidden>
+        <label class="period-label" for="source-table">Table<select id="source-table" class="field"></select></label>
+        <label class="period-label" for="source-period">Période<select id="source-period" class="field"></select></label>
+      </div>
+      <div id="data-summary" class="data-summary"></div>
+      <p id="data-count" class="data-count" role="status" aria-live="polite"></p>
+      <div class="table-scroll" role="region" aria-label="Table de données brutes, défilement horizontal" tabindex="0">
+        <table id="raw-table" class="raw-table"></table>
+      </div>
+      <div class="data-pagination">
+        <button id="data-prev" class="button small" type="button">← Précédent</button>
+        <span id="data-page"></span>
+        <button id="data-next" class="button small" type="button">Suivant →</button>
+      </div>
+      <p class="hub-footnote">L’export contient toutes les lignes retenues, y compris celles des autres pages. CSV UTF-8, séparateur point-virgule.</p>
+    </section>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+  </main>
+</body>
+</html>
