@@ -1,0 +1,50 @@
+# AGENTS.md — consignes pour Codex
+
+## Démarrer une tâche
+
+- Lire `README.md` et, pour toute modification du hub, de l’éditeur, des KPI, des objectifs ou du catalogue, lire aussi `components/home_editor_frontend/README.md`.
+- Vérifier les fichiers et le comportement existants avant de modifier. Suivre la structure du dépôt et garder les changements ciblés.
+- Le projet est un POC Streamlit en français. Préserver son mode de démonstration, qui doit fonctionner sans compte Databricks, secrets, base de données ni service externe.
+- Ne pas présenter comme livrée une fonction décrite comme cible ou prochaine étape dans le README.
+
+## Architecture à respecter
+
+- `app.py` configure Streamlit et enregistre les pages. `pages/accueil.py` et `pages/catalogue_kpi.py` composent le cadre commun (`components/page_frame.py`) et le composant correspondant.
+- `components/home_editor.py` est le pont Python vers le composant Streamlit Components v1 déclaré depuis `components/home_editor_frontend/`. Il transmet la collection à la session Streamlit. Le frontend est du HTML, CSS et JavaScript natif : aucun build npm n’est configuré.
+- Dans le frontend, conserver les responsabilités existantes : `editor.js` gère les interactions et le pont Streamlit ; `layout.js` valide et place les blocs ; `dashboards.js` valide et gère les tableaux ; `data.js` définit les sources fictives, le registre KPI, les périodes et le CSV ; `targets.js` porte les règles d’objectifs ; `catalogue-model.js` documente le métier et produit les exemples SQL ; `catalogue.js` et les feuilles CSS portent la présentation.
+- Garder les ressources frontend locales. Ne pas ajouter de dépendance réseau nécessaire au chargement de l’application.
+- Les styles communs de page sont dans `styles/accueil.css`, le thème Streamlit dans `.streamlit/config.toml`, et les ressources visuelles dans `assets/`.
+
+## Contrats fonctionnels et données
+
+- Garder les textes d’interface en français et respecter l’identité visuelle KPI-Card.
+- Préserver la grille de six colonnes, les types de blocs existants (texte, titre, graphique et carte), les alternatives au glisser-déposer (clic, clavier ou tactile), et l’accessibilité clavier.
+- La collection enregistrée est actuellement en version 2 sous `kpi-card:dashboards:v2` dans le `localStorage`. La disposition des blocs est en version 1. Les tableaux, favoris, périodes, KPI et objectifs y sont enregistrés ; les lignes de démonstration sont régénérées.
+- Toute évolution du format sauvegardé doit accepter les données antérieures, prévoir une migration explicite, préserver les saisies personnalisées et rester compatible avec les limites et validations centralisées dans `dashboards.js` et `layout.js`. Ne jamais supposer que la collection du navigateur est valide.
+- Un bloc KPI possède notamment `kpiId`, `period` et `target`. `period: "inherit"` suit la période du tableau. Les changements de KPI doivent conserver les règles du projet sur la réinitialisation des objectifs, leurs unités et leur validation.
+- Ajouter ou modifier un KPI de façon cohérente dans le registre de `data.js`, sa définition et son calcul, sa documentation et son SQL dans `catalogue-model.js`, ainsi que les éventuels exemples et migrations concernés. Garder cohérents les libellés, unités, filtres, granularités et agrégations.
+- Ne pas additionner les taux, moyennes ou nombres distincts pour produire un total : recalculer selon la définition du KPI. Documenter les règles de dates inclusives, périodes partielles, fuseau et valeurs sans observation quand elles sont concernées.
+- Le CSV est une sortie utilisateur : préserver le format attendu (UTF-8 avec BOM, séparateur point-virgule, décimales françaises) et la protection contre l’injection de formules dans les tableurs.
+
+## Frontend et cache
+
+- Après toute modification d’un fichier CSS ou JavaScript chargé par `components/home_editor_frontend/index.html`, recalculer son SHA-256 et remplacer le paramètre `?v=` correspondant par ses 12 premiers caractères hexadécimaux. Faire de même pour tout nouvel asset chargé avec cette convention.
+- Conserver l’ordre de chargement des scripts dans `index.html` : les modules partagés doivent précéder les modules qui les utilisent.
+- Si le composant ne se recharge pas, vérifier d’abord le port, les logs et les URL versionnées des ressources avant de modifier le code ; éviter de lancer plusieurs instances Streamlit sur le même port.
+
+## Databricks Apps et sécurité
+
+- `app.yaml` lance actuellement `streamlit run app.py`, et `requirements.txt` ne déclare que `streamlit~=1.38.0`. Toute nouvelle dépendance Python doit être nécessaire, documentée et ajoutée à `requirements.txt`.
+- La cible Databricks Apps n’est pas encore un backend de production : il n’existe pas actuellement de connexion SQL, stockage centralisé, identité applicative, partage de tableaux ou contrôle serveur des rôles. Le SQL montré dans le catalogue est un équivalent documenté, non exécuté.
+- Ne pas ajouter de secrets, jetons, données réelles, fichiers locaux utilisateur ou identifiants au dépôt. Utiliser le mécanisme de secrets approprié à l’environnement si un raccordement Databricks est demandé.
+- Lors d’un futur raccordement serveur, valider côté serveur toutes les entrées reçues du navigateur et appliquer les autorisations aux tableaux, données et exports. Ne pas traiter le `localStorage` comme une source fiable.
+- Pour des taux, moyennes, distincts, stocks ou percentiles côté Databricks, respecter la définition métier et le grain de données ; ne pas agréger des résultats pré-calculés de façon mathématiquement incorrecte.
+- Ne pas affirmer qu’un déploiement Databricks ou un accès à des données réelles a été réalisé sans preuve de cette action.
+
+## Conventions et workflows du dépôt
+
+- Garder les noms de fichiers et modules existants et utiliser les chemins relatifs au dépôt. Éviter les chemins personnels ou les dépendances à PyCharm.
+- Le lancement local documenté est : créer un environnement virtuel, installer `requirements.txt`, puis lancer `streamlit run app.py`. Aucune étape npm n’est requise.
+- Le dépôt ne fournit actuellement ni suite de tests automatisés ni workflow CI. Ne pas inventer de commande de test ou de build. Pour une tâche qui demande une validation, décrire et effectuer uniquement les vérifications adaptées à l’environnement disponible, puis distinguer clairement ce qui a été vérifié de ce qui ne l’a pas été.
+- `.gitignore` exclut notamment les environnements virtuels, caches Python et fichiers `.env`. Avant toute contribution, ne pas ajouter de secrets ni de configuration locale ; garder les configurations de déploiement non sensibles.
+- Pour une contribution, résumer les fichiers touchés, les changements de format ou migrations, les vérifications réellement effectuées et les limites restantes. Ne pas déclarer une fonctionnalité terminée si elle n’est que documentée ou simulée.
