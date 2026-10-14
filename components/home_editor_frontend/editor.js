@@ -57,6 +57,7 @@
   let catalogueMode = false;
   let blocks = [], saved = {version: 1, blocks: []}, storageKey = "", rows = 3, lastHeight = 0;
   let collection = {version: 2, dashboards: []}, view = "hub", draftBoard = null, isNew = false, lastDeleted = null;
+  let badgeFilter = "";
   let favoritesOnly = false, detail = null, detailReturnFocus = null, dataPage = 0;
   const inspectorSections = new Map();
   const PAGE_SIZE = 50;
@@ -367,9 +368,18 @@
     undo.hidden = !lastDeleted;
     undo.replaceChildren();
     if (lastDeleted) undo.append(el("span", "", `« ${lastDeleted.name} » a été supprimé.`), button("Annuler la suppression", "button small", undoDelete));
+    const badgeLabel = el("label", "badge-filter", "Badge");
+    const badgeSelect = el("select", "field"); badgeSelect.id = "hub-badge"; badgeLabel.htmlFor = badgeSelect.id;
+    const allBadges = el("option", "", "Tous les badges"); allBadges.value = ""; badgeSelect.append(allBadges);
+    for (const name of [...new Set([...D.BADGES, ...collection.dashboards.map(b => b.category)])]) {
+      const option = el("option", "", name); option.value = name; badgeSelect.append(option);
+    }
+    badgeSelect.value = badgeFilter;
+    badgeSelect.addEventListener("change", () => { badgeFilter = badgeSelect.value; renderHub(); $("hub-badge").focus(); });
+    badgeLabel.append(badgeSelect); filters.append(badgeLabel);
     const query = $("dashboard-search").value.trim().toLocaleLowerCase("fr");
     const matches = collection.dashboards.filter((board) =>
-      (!favoritesOnly || board.favorite) && `${board.name} ${board.description} ${board.category}`.toLocaleLowerCase("fr").includes(query))
+      (!favoritesOnly || board.favorite) && (!badgeFilter || board.category === badgeFilter) && `${board.name} ${board.description} ${board.category}`.toLocaleLowerCase("fr").includes(query))
       .sort((a, b) => Number(b.favorite) - Number(a.favorite));
     const grid = $("dashboard-grid");
     grid.replaceChildren();
@@ -401,9 +411,10 @@
     }
     if (!matches.length) {
       const empty = el("div", "empty-state hub-empty");
-      empty.append(el("h2", "", query ? "Aucun tableau ne correspond à cette recherche." : favoritesOnly ? "Vos favoris vous attendent ici." : "Votre collection commence ici."),
-        el("p", "", query ? "Essayez un autre nom ou une autre catégorie." : favoritesOnly ? "Cliquez sur l’étoile d’un tableau pour le retrouver rapidement." : "Créez un tableau vierge ou partez de l’un des quatre modèles."));
-      if (!query && !favoritesOnly) empty.append(button("Créer un tableau de bord", "button primary", showCreatePanel, "plus"));
+      empty.append(el("h2", "", query || badgeFilter ? "Aucun tableau ne correspond à ces filtres." : favoritesOnly ? "Vos favoris vous attendent ici." : "Votre collection commence ici."),
+        el("p", "", query || badgeFilter ? "Essayez un autre badge ou modifiez vos filtres." : favoritesOnly ? "Cliquez sur l’étoile d’un tableau pour le retrouver rapidement." : "Créez un tableau vierge ou partez de l’un des quatre modèles."));
+      if (badgeFilter) empty.append(button("Afficher tous les badges", "button", () => { badgeFilter = ""; renderHub(); }));
+      if (!query && !favoritesOnly && !badgeFilter) empty.append(button("Créer un tableau de bord", "button primary", showCreatePanel, "plus"));
       grid.append(empty);
     }
   }
@@ -493,6 +504,11 @@
     }
     $("dashboard-name").value = draftBoard.name;
     $("dashboard-description").value = draftBoard.description;
+    const badge = $("dashboard-badge"); badge.replaceChildren();
+    for (const name of [...new Set([...D.BADGES, draftBoard.category])]) {
+      const option = el("option", "", name); option.value = name; badge.append(option);
+    }
+    badge.value = draftBoard.category;
     fillPeriods($("dashboard-period"), draftBoard.period);
     fillPeriods($("view-period"), draftBoard.period);
     $("board-period-summary").textContent = K.rangeLabel(K.bounds(draftBoard.period, dataModel.referenceDate));
@@ -875,7 +891,8 @@
       block.content = input.value;
       renderCanvas();
     });
-    content.append(contentLabel, input);
+    if (block.type !== "actionPlan") content.append(contentLabel, input);
+    else content.append(el("p", "hint", "Aucun paramétrage nécessaire. Enregistrez le tableau, puis ajoutez et gérez les actions directement dans le bloc."));
     if (!metric) B.settings(block, content, {
       el, button, changed: renderCanvas, rebuild: renderInspector, focus: focusInspector,
     });
@@ -1345,7 +1362,8 @@
     rows = Math.min(L.MAX_ROWS, Math.max(rows, row + 2));
     renderCanvas(); renderPalette(); renderInspector();
     notify(`Bloc ${existing ? "déplacé" : "ajouté"}, ligne ${row + 1}, colonne ${col + 1}.${position.span < wanted ? ` Largeur ajustée à ${position.span} colonne(s), selon la place disponible.` : ""}`);
-    focusInspector("block-content");
+    if (blockById(selectedId)?.type === "actionPlan") [...canvas.querySelectorAll(".block")].find(n => n.dataset.id === selectedId)?.focus();
+    else focusInspector("block-content");
   }
 
   function attachDrag(node, payload) {
@@ -1463,6 +1481,7 @@
     draftBoard.name = $("dashboard-name").value;
     $("page-title").textContent = draftBoard.name || "Nouveau tableau";
   });
+  $("dashboard-badge").addEventListener("change", () => { if (editing && draftBoard) draftBoard.category = $("dashboard-badge").value; });
   $("dashboard-description").addEventListener("input", () => {
     if (draftBoard) draftBoard.description = $("dashboard-description").value;
   });

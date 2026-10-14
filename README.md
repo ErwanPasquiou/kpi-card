@@ -405,9 +405,18 @@ onglet du **Catalogue KPI**, sans quitter le rapport ni perdre son brouillon.
 
 La palette regroupe les blocs en **Indicateurs et graphiques**, **Données**,
 **Texte et suivi** et **Structure**. Le **Plan d’action** suit jusqu’à 50 actions
-avec responsable libre, échéance facultative, statut et progression. Le statut
-se modifie en lecture ; la structure se configure en modification.
+avec responsable libre, échéance facultative, statut et progression. Le bloc se pose sans paramétrage : les actions se créent, se modifient et se
+suppriment directement en lecture, avec sauvegarde locale et annulation de la
+dernière suppression. En présentation, le plan reste en consultation.
 Une **Section rétractable** pleine largeur regroupe les lignes suivantes jusqu’à
 la section suivante ; titre, sous-titre et état initial sont configurables.
 Le **Séparateur vertical** occupe une colonne sur la hauteur de sa ligne.
 Ces fonctionnalités restent locales au navigateur, sans comptes ni partage.
+
+
+Le badge du tableau se choisit dans **Votre tableau**, avec le nom et la description.
+La liste proposée comprend Personnel, Pilotage, Commercial, Projets, Relation client,
+Finance, Marketing, Ressources humaines, Opérations, Production, Logistique, Achats,
+Qualité, Informatique, Support, Innovation, RSE, Juridique, Sécurité et Autre.
+Sur l’accueil, **Badge** à droite des favoris filtre les tableaux en combinaison
+avec la recherche et les favoris. Les badges historiques personnalisés sont conservés.

@@ -62,3 +62,9 @@
   catégories de palette se ferment au début de l’édition. En présentation, aucune
   interaction ne sauvegarde un changement ; conserver exploration et sortie clavier.
   Le lien d’information KPI ouvre le catalogue ciblé dans un nouvel onglet.
+
+- Les badges sont centralisés dans `Dashboards.BADGES` ; conserver les catégories
+  historiques et combiner le filtre Badge avec recherche et favoris. Le plan
+  d’action n’a pas de formulaire dans l’inspecteur : son CRUD fonctionne en lecture
+  via `updateInteractiveBlock`, avec sauvegarde locale et annulation des saisies.
+  En présentation et en édition du rapport, les actions restent en consultation.

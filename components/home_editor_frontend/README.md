@@ -438,8 +438,11 @@ colonne et s’étire sur sa ligne, avec `lineStyle` continu, tirets ou pointill
 Le plan possède `actions` (maximum 50), chacune avec `id` unique dans ce bloc,
 `title` (240 caractères), `owner` (120), `due` (date civile ISO valide ou vide) et
 `status` (`todo`, `doing`, `done`). Les responsables sont de simples libellés,
-sans identité ni notification. Le statut se sauvegarde localement en lecture.
-En édition, tous les champs suivent Enregistrer / Annuler. La duplication conserve
+sans identité ni notification. Le bloc se pose sans paramétrage. En lecture,
+ajout, modification, statut et suppression passent par `updateInteractiveBlock`
+et se sauvegardent localement ; un formulaire permet Enregistrer / Annuler, et
+la dernière suppression peut être annulée tant que son avis reste affiché.
+En édition du rapport et en présentation, les actions sont en consultation. La duplication conserve
 les valeurs sans partager les objets d’actions entre blocs.
 
 Le mode présentation est temporaire et utilise Fullscreen API, avec repli vers une
@@ -455,3 +458,13 @@ sessions locales dont le pont Python n’a pas encore été rechargé. Le regist
 valide la sélection et un identifiant inconnu affiche un message puis le catalogue.
 
 Validation ciblée : `node --test tests/*.test.cjs`.
+
+
+## Badges du hub
+
+`dashboards.js` expose `BADGES`, liste de 20 choix partagée par les réglages du
+rapport et le filtre du hub. `category` reste une chaîne bornée à 40 caractères :
+les anciennes valeurs sont préservées et ajoutées aux choix si nécessaire.
+Le choix du badge suit le brouillon Enregistrer / Annuler du rapport. Le filtre
+Badge du hub est temporaire, se combine avec recherche et favoris, et propose
+« Tous les badges ». Une absence de résultat affiche une aide pour retirer le filtre.

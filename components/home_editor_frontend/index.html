@@ -4,22 +4,22 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>KPI-Card · Tableaux de bord</title>
-  <link rel="stylesheet" href="editor.css?v=190d8d2d2ba5">
+  <link rel="stylesheet" href="editor.css?v=e583f2f6ec76">
   <link rel="stylesheet" href="catalogue.css?v=71b32b77c2ef">
   <script defer src="filters.js?v=06b62e9993ca"></script>
   <script defer src="data.js?v=349005fcf290"></script>
   <script defer src="targets.js?v=8cccc5ee0871"></script>
-  <script defer src="report-blocks.js?v=d06218a4fb91"></script>
+  <script defer src="report-blocks.js?v=7b87c1784565"></script>
   <script defer src="content-blocks.js?v=b9163b7afa54"></script>
   <script defer src="chart-styles.js?v=162688687696"></script>
   <script defer src="layout.js?v=d3c33a02ec9d"></script>
   <script defer src="report-analysis.js?v=035da546bb54"></script>
-  <script defer src="dashboards.js?v=7efe84bc9dbb"></script>
+  <script defer src="dashboards.js?v=5463a79aa42d"></script>
   <script defer src="catalogue-model.js?v=fe5abdbd9365"></script>
   <script defer src="catalogue.js?v=9e7190e50975"></script>
   <script defer src="interactive-blocks.js?v=417a25a63e71"></script>
   <script defer src="category-charts.js?v=c95f76a88ee0"></script>
-  <script defer src="editor.js?v=731cc5ed1b81"></script>
+  <script defer src="editor.js?v=a3c573fce25c"></script>
 </head>
 <body>
   <main id="editor" class="editor" aria-label="Vos tableaux de bord KPI-Card">
@@ -76,6 +76,8 @@
           <input id="dashboard-name" class="field" maxlength="90" required>
           <label class="field-label" for="dashboard-description">Description</label>
           <textarea id="dashboard-description" class="field" rows="2" maxlength="240"></textarea>
+          <label class="field-label" for="dashboard-badge">Badge</label>
+          <select id="dashboard-badge" class="field"></select>
           <label class="field-label" for="dashboard-period">Période par défaut</label>
           <select id="dashboard-period" class="field"></select>
           <p class="width-help">Appliquée aux graphiques et cartes qui suivent la période du tableau.</p>

@@ -3,6 +3,7 @@
   "use strict";
   const L = typeof module !== "undefined" && module.exports ? require("./layout.js") : root.HomeLayout;
   const K = typeof module !== "undefined" && module.exports ? require("./data.js") : root.KPIData;
+  const BADGES = ["Personnel", "Pilotage", "Commercial", "Projets", "Relation client", "Finance", "Marketing", "Ressources humaines", "Opérations", "Production", "Logistique", "Achats", "Qualité", "Informatique", "Support", "Innovation", "RSE", "Juridique", "Sécurité", "Autre"];
   const THEMES = ["blue", "teal", "violet", "amber"];
   const R = typeof module !== "undefined" && module.exports ? require("./report-analysis.js") : root.ReportAnalysis;
   const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -137,7 +138,7 @@
       category: "Personnel", theme: "blue", example: false, updatedAt: now, layout: valid});
   }
 
-  const api = {THEMES, normalizeBoard, normalize, upsert, remove, examples, fromLegacy};
+  const api = {BADGES,THEMES, normalizeBoard, normalize, upsert, remove, examples, fromLegacy};
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.Dashboards = api;
 })(globalThis);

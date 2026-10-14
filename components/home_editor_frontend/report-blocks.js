@@ -37,34 +37,97 @@
     }
     return rows;
   }
-  function renderActions(block, body, {el, editable, update}) {
+  let formSequence = 0;
+  function renderActions(block, body, {el, editable, update, undo = null}) {
+    const actions = block.actions || [];
+    function button(label, fn) {
+      const node = el("button", "button small", label); node.type = "button";
+      node.addEventListener("click", fn); return node;
+    }
+    function draw(nextUndo = null, focusId = null) {
+      body.replaceChildren(); renderActions(block, body, {el, editable, update, undo: nextUndo});
+      const target = focusId ? [...body.querySelectorAll("[data-action-edit]")].find(n => n.dataset.actionEdit === focusId) : body.querySelector(".action-add");
+      target?.focus({preventScroll: true});
+    }
+    function commit(next, nextUndo = null, focusId = null) {
+      if (update({actions: next}) === false) return false;
+      draw(nextUndo, focusId); return true;
+    }
+    function edit(action = null) {
+      body.replaceChildren();
+      const form = el("form", "action-form");
+      form.append(el("h3", "chart-heading", action ? "Modifier l’action" : "Nouvelle action"));
+      const id = "live-action-" + ++formSequence;
+      function field(label, key, type, value, max) {
+        const caption = el("label", "field-label", label); caption.htmlFor = id + key;
+        const input = el("input", "field"); input.id = caption.htmlFor; input.type = type; input.value = value || "";
+        if (max) input.maxLength = max;
+        form.append(caption, input); return input;
+      }
+      const title = field("Action", "title", "text", action?.title, 240); title.required = true;
+      const owner = field("Responsable", "owner", "text", action?.owner, 120);
+      const due = field("Échéance", "due", "date", action?.due);
+      const caption = el("label", "field-label", "Statut"); caption.htmlFor = id + "status";
+      const status = el("select", "field"); status.id = caption.htmlFor;
+      for (const [value, label] of Object.entries(STATUSES)) { const option = el("option", "", label); option.value = value; status.append(option); }
+      status.value = action?.status || "todo"; form.append(caption, status);
+      const message = el("p", "hint"); message.setAttribute("role", "status");
+      const controls = el("div", "action-controls");
+      const save = el("button", "button small primary", "Enregistrer l’action"); save.type = "submit";
+      controls.append(save, button("Annuler", () => draw(null, action?.id)));
+      form.addEventListener("submit", event => {
+        event.preventDefault();
+        if (!title.value.trim()) { title.setCustomValidity("Saisissez une action."); title.reportValidity(); return; }
+        if (due.value && !validDate(due.value)) { message.textContent = "L’échéance doit être une date valide."; return; }
+        const value = {id: action?.id || crypto.randomUUID(), title: title.value.trim(), owner: owner.value.trim(), due: due.value, status: status.value};
+        const next = action ? actions.map(a => a.id === action.id ? value : a) : [...actions, value];
+        if (!commit(next, null, value.id)) message.textContent = "L’action n’a pas pu être enregistrée.";
+      });
+      title.addEventListener("input", () => title.setCustomValidity(""));
+      form.addEventListener("keydown", event => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); draw(null, action?.id); } });
+      form.append(controls, message); body.append(form); title.focus({preventScroll: true});
+    }
     body.append(el("h3", "chart-heading", block.content || "Plan d’action"));
-    const actions = block.actions || [], done = actions.filter(a => a.status === "done").length;
+    const done = actions.filter(a => a.status === "done").length;
     body.append(el("p", "hint", `${done} / ${actions.length} action(s) terminée(s)`));
     const progress = el("progress", "action-progress"); progress.max = Math.max(1, actions.length); progress.value = done;
     progress.setAttribute("aria-label", "Progression du plan d’action"); body.append(progress);
-    if (!actions.length) body.append(el("p", "hint", "Ajoutez vos actions dans les réglages du bloc."));
+    if (!actions.length) body.append(el("p", "hint", editable ? "Ajoutez votre première action." : "Aucune action pour le moment."));
+    if (undo && editable) {
+      const notice = el("div", "action-undo"); notice.setAttribute("role", "status");
+      notice.append(el("span", "", "Action supprimée."), button("Annuler la suppression", () => {
+        const next = [...actions]; next.splice(Math.min(undo.index, next.length), 0, undo.action);
+        commit(next, null, undo.action.id);
+      })); body.append(notice);
+    }
     const list = el("ul", "action-list");
-    for (const action of actions) {
+    for (const [index, action] of actions.entries()) {
       const item = el("li", "action-item status-" + action.status);
       item.append(el("strong", "", action.title || "Action sans titre"),
         el("p", "hint", (action.owner || "Responsable à définir") + " · " +
           (action.due ? "Échéance : " + action.due.split("-").reverse().join("/") : "Sans échéance")));
       if (editable) {
+        const controls = el("div", "action-controls");
         const select = el("select", "field action-status"); select.setAttribute("aria-label", "Statut : " + (action.title || "Action sans titre"));
         for (const [id, label] of Object.entries(STATUSES)) { const option = el("option", "", label); option.value = id; select.append(option); }
         select.value = action.status;
         select.addEventListener("change", () => {
-          const result = update({actions: actions.map(a => a.id === action.id ? {...a, status: select.value} : a)});
-          if (result === false) { select.value = action.status; return; }
-          body.replaceChildren(); renderActions(block, body, {el, editable, update});
-          [...body.querySelectorAll("select")][actions.indexOf(action)]?.focus({preventScroll: true});
+          if (!commit(actions.map(a => a.id === action.id ? {...a, status: select.value} : a), null, action.id)) select.value = action.status;
         });
-        item.append(select);
+        const modify = button("Modifier", () => edit(action)); modify.dataset.actionEdit = action.id;
+        modify.setAttribute("aria-label", "Modifier l’action : " + action.title);
+        const remove = button("Supprimer", () => commit(actions.filter(a => a.id !== action.id), {action, index}));
+        remove.setAttribute("aria-label", "Supprimer l’action : " + action.title);
+        controls.append(select, modify, remove); item.append(controls);
       } else item.append(el("span", "action-badge", STATUSES[action.status]));
       list.append(item);
     }
     body.append(list);
+    if (editable) {
+      const add = button("Ajouter une action", () => edit()); add.classList.add("action-add"); add.disabled = actions.length >= 50;
+      body.append(add);
+      if (actions.length >= 50) body.append(el("p", "hint", "Limite de 50 actions atteinte."));
+    }
   }
   function settings(block, container, {el, button, changed, rebuild, focus}) {
     function input(label, id, value, type, onInput, max = 240) {
@@ -88,27 +151,6 @@
       select.value = block.lineStyle; select.addEventListener("change", () => { block.lineStyle = select.value; changed(); });
       container.append(label, select);
     }
-    if (block.type !== "actionPlan") return;
-    block.actions ||= [];
-    for (const [index, action] of block.actions.entries()) {
-      container.append(el("h4", "", `Action ${index + 1}`));
-      input("Action", `action-title-${index}`, action.title, "text", v => action.title = v);
-      input("Responsable", `action-owner-${index}`, action.owner, "text", v => action.owner = v, 120);
-      input("Échéance", `action-due-${index}`, action.due, "date", v => action.due = v);
-      const label = el("label", "field-label", "Statut"); label.htmlFor = `action-status-${index}`;
-      const select = el("select", "field"); select.id = label.htmlFor;
-      for (const [id, name] of Object.entries(STATUSES)) { const option = el("option", "", name); option.value = id; select.append(option); }
-      select.value = action.status; select.addEventListener("change", () => { action.status = select.value; changed(); });
-      container.append(label, select, button("Supprimer cette action", "button small", () => {
-        block.actions.splice(index, 1); changed(); rebuild(); focus("add-action");
-      }));
-    }
-    const add = button("Ajouter une action", "button small", () => {
-      if (block.actions.length >= 50) return;
-      block.actions.push({id: crypto.randomUUID(), title: "Nouvelle action", owner: "", due: "", status: "todo"});
-      changed(); rebuild(); focus(`action-title-${block.actions.length - 1}`);
-    });
-    add.id = "add-action"; add.disabled = block.actions.length >= 50; container.append(add);
   }
   const api = {normalize, validDate, visibleRows, renderActions, settings};
   if (typeof module !== "undefined" && module.exports) module.exports = api;
