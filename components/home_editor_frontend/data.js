@@ -28,6 +28,10 @@
     return isoDate(date);
   }
   const validPeriod = (value) => PERIODS.some((item) => item.id === value);
+  function previousRange(range) {
+    const days = Math.round((dateValue(range.end) - dateValue(range.start)) / DAY) + 1;
+    return {...range, start: addDays(range.start, -days), end: addDays(range.start, -1), label: "Période précédente · " + days + " jours"};
+  }
   function bounds(period, end = today()) {
     const id = validPeriod(period) ? period : "rolling12";
     let start;
@@ -109,7 +113,7 @@
     const clients = ["Atelier Azur", "Maison Rivage", "Studio Horizon", "Les Jardins", "Groupe Nova", "Bureau Atlas"];
     const regions = ["Île-de-France", "Bretagne", "Occitanie", "Auvergne-Rhône-Alpes"];
     const products = ["Abonnement Essentiel", "Abonnement Équipe", "Accompagnement", "Formation"];
-    for (let date = shiftMonths(end, -18); date <= end; date = addDays(date, 1)) {
+    for (let date = shiftMonths(end, -30); date <= end; date = addDays(date, 1)) {
       // Graine calendaire : une même journée conserve ses données au prochain chargement.
       let seed = Math.floor(dateValue(date).getTime() / DAY) >>> 0;
       const random = (max) => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return Math.floor(seed / 4294967296 * max); };
@@ -154,19 +158,22 @@
 
   function createModel(referenceDate = today()) {
     const tables = generateTables(referenceDate), cache = new Map();
-    function source(tableId, period = "rolling12", filters = []) {
-      const table = F.resolveTable(TABLES.find((item) => item.id === tableId) || TABLES[0], tables[tableId] || tables.sales), range = bounds(period, referenceDate);
+    function source(tableId, period = "rolling12", filters = [], globalFilters = [], previous = false) {
+      const table = F.resolveTable(TABLES.find((item) => item.id === tableId) || TABLES[0], tables[tableId] || tables.sales);
+      const current = bounds(period, referenceDate), range = previous ? previousRange(current) : current;
       const valid = F.normalize(filters, table);
-      if (!valid) throw new Error("Filtres invalides pour cette source.");
+      const global = F.normalize(globalFilters, table);
+      if (!valid || !global) throw new Error("Filtres invalides pour cette source.");
       const dated = tables[table.id].filter((row) => row.date >= range.start && row.date <= range.end);
-      return {table, range, filters: valid, rows: F.apply(dated, valid, table)};
+      return {table, range, filters: [...global, ...valid], rows: F.apply(F.apply(dated, global, table), valid, table)};
     }
-    function evaluate(kpiId, period = "rolling12", filters = []) {
+    function evaluate(kpiId, period = "rolling12", filters = [], globalFilters = [], previous = false) {
       const kpi = definition(kpiId), normalized = F.normalize(filters, tableDefinition(kpi.table));
-      if (!normalized) throw new Error("Filtres invalides pour cet indicateur.");
-      const key = `${kpi.id}:${validPeriod(period) ? period : "rolling12"}:${JSON.stringify(normalized)}`;
+      const global = F.normalize(globalFilters, tableDefinition(kpi.table));
+      if (!normalized || !global) throw new Error("Filtres invalides pour cet indicateur.");
+      const key = `${kpi.id}:${validPeriod(period) ? period : "rolling12"}:${JSON.stringify(normalized)}:${JSON.stringify(global)}:${previous}`;
       if (cache.has(key)) return cache.get(key);
-      const data = source(kpi.table, period, normalized), rows = data.rows.filter(kpi.filter);
+      const data = source(kpi.table, period, normalized, global, previous), rows = data.rows.filter(kpi.filter);
       const daily = ["month1", "week1"].includes(data.range.period);
       const bucketKey = (date) => daily ? date : date.slice(0, 7);
       const groups = new Map();
@@ -204,7 +211,7 @@
     return "\uFEFF" + [table.columns.map((column) => cell(column.label)).join(";"),
       ...rows.map((row) => table.columns.map((column) => cell(row[column.key])).join(";"))].join("\r\n") + "\r\n";
   }
-  const api = {PERIODS, TABLES, KPIS, today, bounds, rangeLabel, formatDate, validPeriod, isKpi, definition, tableDefinition, formatValue, createModel, toCsv,
+  const api = {PERIODS, TABLES, KPIS, today, bounds, previousRange, rangeLabel, formatDate, validPeriod, isKpi, definition, tableDefinition, formatValue, createModel, toCsv,
     calculationHelpers: {sum, mean, percent}};
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.KPIData = api;

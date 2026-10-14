@@ -14,7 +14,18 @@
     if(text!==null) node.textContent=text;
     return node;
   }
-  function render(block,result) {
+  function render(block,result,onExplore) {
+    function explore(node,group) {
+      if(!onExplore) return;
+      node.setAttribute("role","button"); node.setAttribute("tabindex","0");
+      node.setAttribute("aria-label","Explorer "+group.label+" · "+K.formatValue(group.value,result.kpi));
+      node.classList.add("category-explore");
+      node.addEventListener("click",event=>{event.stopPropagation(); onExplore(group,node);});
+      node.addEventListener("keydown",event=>{
+        event.stopPropagation();
+        if(["Enter"," "].includes(event.key)){event.preventDefault();onExplore(group,node);}
+      });
+    }
     const wrap=el("div","category-chart"), data=C.distribution(result,block.groupBy);
     if(!data.column) { wrap.append(el("p","hint","Aucune colonne de catégorie disponible dans cette source.")); return wrap; }
     wrap.append(el("p","category-heading","Répartition par "+data.column.label));
@@ -23,7 +34,7 @@
     if(block.chartKind==="donut" && !ring) wrap.append(el("p","hint",
       "Anneau disponible uniquement pour un montant ou un comptage positif, sans catégorie négative. Comparaison en barres ci-dessous."));
     if(ring) {
-      const figure=svg("svg",{viewBox:"0 0 240 240",class:"donut-chart",role:"img",
+      const figure=svg("svg",{viewBox:"0 0 240 240",class:"donut-chart",role:"group",
         "aria-label":result.kpi.label+" par "+data.column.label+". Valeurs détaillées dans la légende."});
       let offset=0;
       data.groups.forEach((group,index)=>{
@@ -33,6 +44,7 @@
             "stroke-width":32,pathLength:100,"stroke-dasharray":share+" "+(100-share),
             "stroke-dashoffset":-offset,transform:"rotate(-90 120 120)"});
           arc.append(svg("title",{},group.label+" : "+K.formatValue(group.value,result.kpi)+" · "+share.toLocaleString("fr-FR",{maximumFractionDigits:1})+" %"));
+          explore(arc,group);
           figure.append(arc); offset+=share;
         }
       });
@@ -44,7 +56,8 @@
     const numbers=data.groups.map(group=>group.value).filter(Number.isFinite);
     const min=Math.min(0,...numbers), max=Math.max(0,...numbers), range=max-min || 1;
     for(const [index,group] of data.groups.entries()) {
-      const row=el("li","category-row"), heading=el("div","category-row-heading");
+      const item=el("li"), row=el("div","category-row"), heading=el("div","category-row-heading");
+      explore(row,group);
       const label=el("span","category-label");
       const swatch=el("span","category-swatch"); swatch.style.background=colors[index%colors.length]; swatch.setAttribute("aria-hidden","true");
       label.append(swatch,el("span","",group.label));
@@ -58,7 +71,7 @@
         bar.style.left=((Math.min(0,group.value)-min)/range*100)+"%"; bar.style.width=(Math.abs(group.value)/range*100)+"%"; bar.style.background=colors[index%colors.length];
         track.append(bar,zero); row.append(track);
       }
-      row.append(el("span","category-count",group.count.toLocaleString("fr-FR")+" lignes")); list.append(row);
+      row.append(el("span","category-count",group.count.toLocaleString("fr-FR")+" lignes · Cliquer pour explorer")); item.append(row); list.append(item);
     }
     wrap.append(list);
     if(!result.kpi.additive) wrap.append(el("p","hint","Chaque catégorie est recalculée sur ses lignes. Les taux, moyennes et nombres distincts ne s’additionnent pas."));

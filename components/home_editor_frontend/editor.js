@@ -9,6 +9,8 @@
   const F = window.KPIFilters;
   const I = window.InteractiveBlocks;
   const C = window.ChartStyles;
+  const R = window.ReportAnalysis;
+  let reportSource = "sales";
   const dataModel = K.createModel();
   const $ = (id) => document.getElementById(id);
   const root = $("editor"), canvas = $("canvas");
@@ -94,7 +96,60 @@
   function lastRow() { return Math.max(-1, ...blocks.map((block) => block.row)); }
   function activePayload() { return dragging || pending; }
   function metricPeriod(block, board = draftBoard) { return K.validPeriod(block.period) ? block.period : board?.period || "rolling12"; }
-  function metricResult(block, board = draftBoard) { return dataModel.evaluate(block.kpiId, metricPeriod(block, board), block.filters || []); }
+  function metricResult(block, board = draftBoard, previous = false) {
+    return dataModel.evaluate(block.kpiId, metricPeriod(block, board), block.filters || [], R.filtersFor(board, block), previous);
+  }
+  function updateReport(patch) {
+    Object.assign(draftBoard, patch);
+    if (!editing) {
+      draftBoard.updatedAt = Date.now();
+      collection = D.upsert(collection, draftBoard);
+      persistCollection("Réglages du rapport enregistrés.");
+    }
+    renderCanvas(); renderInspector(); renderReportControls();
+  }
+  function renderReportControls() {
+    const host = $("report-controls"), opened = host.querySelector("details")?.open || false;
+    host.hidden = view === "hub";
+    host.replaceChildren();
+    if (host.hidden) return;
+    const label = el("label", "field-label", "Comparer les indicateurs");
+    label.htmlFor = "report-comparison";
+    const select = el("select", "field"); select.id = "report-comparison";
+    for (const [value,text] of [["previous","À la période précédente"],["none","Sans comparaison"]]) {
+      const option=el("option","",text); option.value=value; select.append(option);
+    }
+    select.value=draftBoard.comparison;
+    select.addEventListener("change",()=>updateReport({comparison:select.value}));
+    const details=el("details","report-global-filters"); details.open=opened;
+    const count=Object.values(draftBoard.globalFilters || {}).reduce((n,filters)=>n+filters.length,0);
+    details.append(el("summary","","Filtres globaux du rapport · "+count+" condition(s)"));
+    const content=el("div","sidebar-section-body");
+    const sourceLabel=el("label","field-label","Source à filtrer"); sourceLabel.htmlFor="report-source";
+    const source=el("select","field"); source.id="report-source";
+    for(const table of K.TABLES) { const option=el("option","",table.label); option.value=table.id; source.append(option); }
+    source.value=reportSource;
+    source.addEventListener("change",()=>{reportSource=source.value; renderReportControls();});
+    content.append(sourceLabel,source);
+    const affected=blocks.filter(block=>R.sourceId(block)===reportSource);
+    const dataBlocks=blocks.filter(block=>R.sourceId(block));
+    content.append(el("p","hint",affected.length+" bloc(s) concerné(s) sur "+dataBlocks.length+" blocs de données : "+
+      (affected.map(block=>block.content || definitions[block.type].label).join(", ") || "aucun")+
+      ". Les blocs des autres sources ne sont pas filtrés par ces conditions."));
+    const data=dataModel.source(reportSource,draftBoard.period);
+    I.filterEditor(content,data.table,draftBoard.globalFilters?.[reportSource] || [],(filters)=>{
+      const globalFilters=R.normalizeFilters({...draftBoard.globalFilters,[reportSource]:filters});
+      updateReport({globalFilters});
+    },null,data.rows);
+    content.append(el("p","hint","Les filtres globaux s’ajoutent aux filtres de chaque bloc avec ET, pour les deux périodes comparées. Les choix affichés suivent la période du rapport."));
+    if(count) content.append(button("Effacer tous les filtres du rapport","button small",()=>updateReport({globalFilters:{}})));
+    details.append(content); host.append(label,select,details);
+    if(count) {
+      const active=el("p","filter-summary");
+      active.textContent=Object.entries(draftBoard.globalFilters).map(([id,filters])=>K.tableDefinition(id).label+" : "+F.describe(filters,K.tableDefinition(id))).join(" · ");
+      host.append(active);
+    }
+  }
 
   function updateInteractiveBlock(block, patch) {
     const candidate = blocks.map((item) => item.id === block.id ? {...item, ...patch} : item);
@@ -146,6 +201,7 @@
     draftBoard.period = value;
     $("view-period").value = $("dashboard-period").value = value;
     $("board-period-summary").textContent = K.rangeLabel(K.bounds(value, dataModel.referenceDate));
+    renderReportControls();
     renderCanvas();
     renderInspector();
     if (!editing) {
@@ -397,6 +453,7 @@
     $("eyebrow-label").textContent = hub ? "VOTRE ESPACE KPI-CARD" : editing ? "COMPOSEZ VOTRE TABLEAU" : draftBoard.category.toLocaleUpperCase("fr");
     root.classList.toggle("editing", editing);
     $("sidebar").hidden = !editing;
+    renderReportControls();
     $("canvas-heading").hidden = !editing;
     $("column-guides").hidden = !editing;
     $("add-row").hidden = !editing;
@@ -489,19 +546,11 @@
         label.append(handle, document.createTextNode(definitions[block.type].label));
         tools.append(label, el("span", "span-badge", `${block.span}/6`));
         card.append(tools);
-      } else if (["chart", "card"].includes(block.type)) {
+      }
+      if (!editing && ["chart", "card"].includes(block.type)) {
         card.classList.add("data-block");
-        card.tabIndex = 0;
-        card.setAttribute("role", "button");
-        const result = metricResult(block);
-        const target = T.evaluate(block.target, result);
-        const targetLabel = target ? ` Objectif : ${T.formatValue(target.value, result.kpi)}. Écart : ${T.formatDelta(target.delta, result.kpi)}. ${T.statusLabel(target)}.` : "";
-        card.setAttribute("aria-label", `${block.content || result.kpi.label} : ${K.formatValue(result.value, result.kpi)}. ${result.range.label}.${targetLabel} Ouvrir les données brutes.`);
-        card.addEventListener("click", () => openBlockData(block, card));
-        card.addEventListener("keydown", (event) => {
-          if (event.target !== card || !["Enter", " "].includes(event.key)) return;
-          event.preventDefault();
-          openBlockData(block, card);
+        card.addEventListener("click", (event) => {
+          if (!event.target.closest("button, [role=button]")) openBlockData(block, card.querySelector(".block-data-button"));
         });
       }
       card.append(renderBody(block));
@@ -518,7 +567,7 @@
 
   function renderBody(block) {
     const body = el("div", "block-body");
-    if (block.type === "table") I.table(block, body, dataModel, metricPeriod(block), (patch) => updateInteractiveBlock(block, patch));
+    if (block.type === "table") I.table(block, body, dataModel, metricPeriod(block), (patch) => updateInteractiveBlock(block, patch), R.filtersFor(draftBoard, block));
     else if (block.type === "callout" && !editing) I.note(block, body, (patch) => updateInteractiveBlock(block, patch));
     else B.render(block, body, el);
     if (["chart", "card"].includes(block.type)) {
@@ -531,9 +580,11 @@
       body.append(el("p", "metric-period", `${result.range.label} · ${result.rows.length.toLocaleString("fr-FR")} lignes`),
         el("p", "metric-range", K.rangeLabel(result.range)));
       if (result.filters.length) body.append(el("p", "filter-summary", F.describe(result.filters, result.table)));
+      if (R.filtersFor(draftBoard, block).length) body.append(el("p", "filter-summary", "Filtres globaux appliqués · " + result.table.label));
+      if (draftBoard.comparison !== "none") body.append(renderComparison(block, result));
       if (target) body.append(renderTargetSummary(target, result.kpi, block.type === "chart"));
       if (block.type === "chart" && (result.rows.length || target)) {
-        body.append(C.categorical(block.chartKind) ? window.CategoryCharts.render(block, result) : renderChart(block, result, target));
+        body.append(C.categorical(block.chartKind) ? window.CategoryCharts.render(block, result, (group,trigger)=>openCategoryData(block,result,group,trigger)) : renderChart(block, result, target));
         if (target && C.categorical(block.chartKind)) body.append(el("p", "hint", "Objectif global du bloc, non réparti entre les catégories."));
         if (target && !C.categorical(block.chartKind)) {
           const legend = el("div", "chart-legend");
@@ -543,9 +594,29 @@
         }
       }
       if (!result.rows.length) body.append(el("p", "hint", "Aucune donnée sur cette période."));
-      if (!editing) body.append(el("span", "data-link", "Voir les données →"));
+      if (!editing) body.append(button("Voir toutes les données", "block-data-button", (event) => { event.stopPropagation(); openBlockData(block,event.currentTarget); }, "table"));
     }
     return body;
+  }
+
+  function renderComparison(block, current) {
+    const previous = metricResult(block, draftBoard, true), change = R.comparison(current, previous);
+    const box=el("div","period-comparison");
+    box.append(el("p","","Période précédente : "+K.formatValue(previous.value,current.kpi)));
+    if(change.delta===null) box.append(el("p","hint","Comparaison indisponible : aucune observation ou valeur non calculable."));
+    else {
+      const percent=change.percent===null?"variation relative non définie (base nulle)":
+        (change.percent>0?"+":"")+change.percent.toLocaleString("fr-FR",{maximumFractionDigits:1})+" %";
+      box.append(el("strong","",T.formatDelta(change.delta,current.kpi)+" · "+percent));
+    }
+    box.append(el("p","hint",K.rangeLabel(previous.range)+" · même nombre de jours, juste avant la période du bloc."));
+    const inspect=button("Voir la période précédente","comparison-link",(event)=>{
+      event.stopPropagation();
+      detail={data:previous,title:(block.content || current.kpi.label)+" · Période précédente",source:false};
+      showDataPanel(event.currentTarget);
+    });
+    inspect.addEventListener("keydown",event=>event.stopPropagation());
+    box.append(inspect); return box;
   }
 
   function renderTargetSummary(comparison, kpi, compact = false) {
@@ -1039,6 +1110,13 @@
     detail = {data: metricResult(block), title: block.content || K.definition(block.kpiId).label, source: false};
     showDataPanel(trigger);
   }
+  function openCategoryData(block, result, group, trigger) {
+    const rows = [...group.rows].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+    detail = {data: {...result,rows,value:result.kpi.calculate(rows)},
+      title: (block.content || result.kpi.label)+" · "+group.label, source:false,
+      context:"Catégorie sélectionnée : "+group.label+" · "+group.rows.length+" lignes"};
+    showDataPanel(trigger);
+  }
 
   function openSources(event) {
     detail = {data: dataModel.source("sales", "rolling12"), title: "Tables de démonstration", source: true};
@@ -1071,6 +1149,7 @@
     $("data-title").textContent = detail.title;
     $("data-description").textContent = `${data.table.label} · ${data.table.grain} · ${K.rangeLabel(data.range)}`;
     if (data.filters?.length) $("data-description").textContent += " · " + F.describe(data.filters, data.table);
+    if (detail.context) $("data-description").textContent += " · " + detail.context;
     $("source-controls").hidden = !detail.source;
     $("source-table").value = data.table.id;
     $("source-period").value = data.range.period;

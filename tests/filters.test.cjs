@@ -6,6 +6,59 @@ const L = require("../components/home_editor_frontend/layout.js");
 const model = K.createModel("2026-10-14");
 const sales = K.tableDefinition("sales");
 
+test("période précédente contiguë de même longueur, y compris année bissextile", () => {
+  for(const date of ["2026-10-14","2024-02-29","2026-01-01"]) for(const period of K.PERIODS) {
+    const current=K.bounds(period.id,date), before=K.previousRange(current);
+    const day=s=>Date.parse(s+"T00:00:00Z");
+    assert.equal(day(current.end)-day(current.start),day(before.end)-day(before.start));
+    assert.equal(day(current.start)-day(before.end),86400000);
+  }
+});
+test("filtres globaux et locaux sont combinés pour les deux périodes et les catégories", () => {
+  const global=[filter("region","in",["Bretagne","Occitanie"])], local=[filter("quantite","gte",3)];
+  for(const previous of [false,true]) {
+    const current=model.evaluate("revenue","months3",local,global,previous);
+    const unfiltered=model.source("sales","months3",[],[],previous).rows;
+    const expected=unfiltered.filter(r=>["Bretagne","Occitanie"].includes(r.region)&&r.quantite>=3&&r.statut==="Gagnée");
+    assert.deepEqual(current.rows,expected);
+    assert.equal(current.value,expected.reduce((sum,r)=>sum+r.montant_ht,0));
+    const C=require("../components/home_editor_frontend/chart-styles.js");
+    const groups=C.distribution(current,"region").groups;
+    assert.equal(groups.reduce((n,g)=>n+g.count,0),expected.length);
+    for(const group of groups) {
+      assert.ok(group.rows.every(r=>r.region===group.label));
+      assert.equal(K.toCsv(current.table,group.rows).split("\r\n").length,group.count+2);
+    }
+  }
+  assert.notStrictEqual(model.evaluate("revenue","months3",local,global),model.evaluate("revenue","months3",local,global,true));
+  const long=model.evaluate("revenue","rolling12",[],[],true);
+  assert.ok(long.rows.some(r=>r.date===long.range.start));
+});
+test("comparaison robuste aux absences, zéros, taux et moyennes", () => {
+  const R=require("../components/home_editor_frontend/report-analysis.js");
+  const result=value=>({value,rows:[{}]});
+  assert.deepEqual(R.comparison(result(120),result(100)),{delta:20,percent:20});
+  assert.deepEqual(R.comparison(result(3),result(0)),{delta:3,percent:null});
+  assert.deepEqual(R.comparison({value:0,rows:[]},result(5)),{delta:null,percent:null});
+  for(const id of ["margin","average_basket","projects_count"]) {
+    const before=model.evaluate(id,"months3",[],[],true);
+    assert.equal(before.value,before.kpi.calculate(before.rows));
+  }
+});
+test("portée des filtres globaux, persistance et rejet des schémas invalides", () => {
+  const R=require("../components/home_editor_frontend/report-analysis.js");
+  const D=require("../components/home_editor_frontend/dashboards.js");
+  const board=D.examples(1).dashboards[0];
+  board.globalFilters={sales:[filter("region","in",["Bretagne"])]};
+  board.comparison="none";
+  assert.equal(R.filtersFor(board,{type:"card",kpiId:"on_time"}).length,0);
+  assert.equal(R.filtersFor(board,{type:"chart",kpiId:"revenue"}).length,1);
+  assert.equal(R.filtersFor(board,{type:"table",sourceId:"sales"}).length,1);
+  assert.deepEqual(D.normalizeBoard(JSON.parse(JSON.stringify(board))),board);
+  assert.equal(R.normalizeFilters({operations:[filter("region","eq","Bretagne")]}),null);
+  assert.equal(R.normalizeFilters({unknown:[]}),null);
+});
+
 test("répartition filtrée par région et produit : conservation des montants", () => {
   const C=require("../components/home_editor_frontend/chart-styles.js");
   const result=model.evaluate("revenue","months3",[filter("quantite","gte",3)]);

@@ -30,6 +30,8 @@
 
 - `chart-styles.js` centralise les présentations des séries et préserve les ruptures sur données manquantes. Les répartitions catégorielles recalculent les agrégats par groupe ; les anneaux sont réservés aux KPI additifs, positifs et sans catégorie négative. Ne pas répartir implicitement un objectif global. Les trois sections du panneau et leurs sous-rubriques sont fermées au début de chaque session d’édition ; les actions de sélection et erreurs ouvrent les rubriques nécessaires.
 
+- `report-analysis.js` valide les filtres globaux par source. Ne jamais les appliquer à une autre source implicitement. Comparer des fenêtres inclusives, contiguës et de même durée, avec les mêmes filtres. Les exports de catégorie ou de période précédente doivent reprendre exactement les lignes du détail. Préserver `globalFilters` et `comparison` lors de toute sauvegarde du rapport.
+
 ## Frontend et cache
 
 - Après toute modification d’un fichier CSS ou JavaScript chargé par `components/home_editor_frontend/index.html`, recalculer son SHA-256 et remplacer le paramètre `?v=` correspondant par ses 12 premiers caractères hexadécimaux. Faire de même pour tout nouvel asset chargé avec cette convention.

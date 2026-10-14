@@ -4,6 +4,7 @@
   const L = typeof module !== "undefined" && module.exports ? require("./layout.js") : root.HomeLayout;
   const K = typeof module !== "undefined" && module.exports ? require("./data.js") : root.KPIData;
   const THEMES = ["blue", "teal", "violet", "amber"];
+  const R = typeof module !== "undefined" && module.exports ? require("./report-analysis.js") : root.ReportAnalysis;
   const clone = (value) => JSON.parse(JSON.stringify(value));
 
   // Convertir uniquement les chiffres d'exemple restés intacts ; préserver les textes personnalisés.
@@ -39,7 +40,8 @@
     if (!raw || typeof raw.id !== "string" || !raw.id || raw.id.length > 100 ||
         typeof raw.name !== "string" || !raw.name.trim()) return null;
     const layout = L.normalize(upgradeExamples(raw));
-    if (!layout) return null;
+    const globalFilters = R.normalizeFilters(raw.globalFilters);
+    if (!layout || !globalFilters) return null;
     return {
       id: raw.id, name: raw.name.trim().slice(0, 90),
       description: String(raw.description ?? "").trim().slice(0, 240),
@@ -48,6 +50,8 @@
       example: raw.example === true,
       favorite: raw.favorite === true,
       period: K.validPeriod(raw.period) ? raw.period : "rolling12",
+      comparison: raw.comparison === "none" ? "none" : "previous",
+      globalFilters,
       updatedAt: Number.isFinite(raw.updatedAt) && raw.updatedAt > 0 ? raw.updatedAt : 0,
       layout,
     };

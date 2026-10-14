@@ -406,3 +406,16 @@ textarea.field { resize: vertical; min-height: 100px; }
 .category-track { height: 12px; background: #edf2f5; border-radius: 3px; position: relative; margin: 5px 0; overflow: hidden; }
 .category-bar { position: absolute; height: 100%; border-radius: 3px; }
 .category-zero { position: absolute; height: 100%; border-left: 1px solid #617b88; }
+
+.report-controls { background: #ffffffdb; border: 1px solid #dce6ed; border-radius: 12px; padding: 16px 20px; margin: 0 0 22px; }
+.report-controls > select { max-width: 300px; margin: 6px 0 12px; }
+.report-global-filters > summary { cursor: pointer; font-weight: 650; padding: 8px 0; }
+.report-global-filters .filter-form { max-width: 620px; }
+.period-comparison { margin-top: 14px; padding: 12px; border-radius: 8px; background: #f1f7fb; font-size: 12px; }
+.period-comparison strong { display: block; color: #234e64; margin: 5px 0; }
+.comparison-link { border: 0; background: none; padding: 6px 0; color: #246e94; text-align: left; text-decoration: underline; cursor: pointer; font: inherit; }
+.category-explore { cursor: pointer; }
+.category-row.category-explore { padding: 6px; border-radius: 7px; }
+.category-row.category-explore:hover { background: #edf6fb; }
+.category-explore:focus-visible { outline: 3px solid #35b5cf; outline-offset: 3px; }
+.data-open > #report-controls { display: none !important; }

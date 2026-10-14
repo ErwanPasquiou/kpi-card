@@ -111,7 +111,7 @@ de démonstration et les mêmes calculs que les tableaux créés par l'utilisate
 
 ## Tables et KPI de démonstration
 
-`data.js` génère environ 18 mois de lignes fictives jusqu'à la date de chargement
+`data.js` génère environ 30 mois de lignes fictives jusqu'à la date de chargement
 (Europe/Paris). Une graine propre à chaque journée rend les données reproductibles
 pour une même date. Aucune base de données, aucun service externe ni import ne sont requis.
 
@@ -376,3 +376,42 @@ ou sans total positif affichent une explication et les valeurs en barres.
 L’objectif reste global au bloc, visible dans son résumé ; aucune répartition
 arbitraire de la cible entre catégories. `chart-styles.js` groupe les lignes et
 `category-charts.js` rend l’anneau, les barres et leurs légendes lisibles au clavier.
+
+## Comparaison, filtres globaux et exploration
+
+**Comparer les indicateurs** active par défaut la période précédente, ou permet
+**Sans comparaison**. Pour chaque carte/graphique, cette période précède immédiatement
+celle du bloc et contient exactement le même nombre de jours inclusifs. Ce n’est pas
+nécessairement un mois civil ni l’année précédente. Les dates sont visibles et les
+blocs ayant leur propre période conservent celle-ci. Trente mois de données fictives
+couvrent les deux fenêtres de douze mois, sans tronquer la période de référence.
+
+Le total, la moyenne, le taux ou le distinct est recalculé séparément sur chaque
+fenêtre. L’écart absolu respecte l’unité (points pour taux/notes) ; la variation
+relative vaut (actuel − précédent) / abs(précédent). Une base nulle donne un écart
+absolu, sans pourcentage ; une période sans observation donne une comparaison
+indisponible. Aucun sens favorable/défavorable n’est déduit de la seule variation.
+**Voir la période précédente** ouvre ses lignes exactes et leur export CSV.
+
+**Filtres globaux du rapport** propose une source puis les mêmes conditions typées
+et multisélections que les blocs. Le panneau nomme les blocs de données concernés.
+Ces conditions affectent tous les blocs de cette source, y compris les tableaux
+bruts, mais jamais les autres sources sur la seule base d’un nom de colonne identique.
+Les filtres globaux et locaux se combinent avec ET et sont appliqués identiquement
+aux deux fenêtres de comparaison. Une condition de date absolue reste absolue : elle
+peut donc exclure les observations précédentes, ce qui est signalé par la comparaison.
+Les objectifs restent ceux définis par l’utilisateur, sans ajustement automatique.
+
+La collection v2 conserve `globalFilters: {sourceId: conditions}` et `comparison`
+(`previous` ou `none`) au niveau du rapport. Les anciennes sauvegardes reçoivent
+une liste de filtres vide et la comparaison précédente. En lecture les changements
+sont sauvegardés localement ; en édition ils sont enregistrés ou annulés avec le
+brouillon. Jusqu’à 20 conditions globales par source et 20 locales par bloc.
+`report-analysis.js` centralise leur validation, portée et les écarts calculés.
+
+Les parts d’anneau, barres horizontales et lignes de légende sont accessibles au clic
+et avec Entrée/Espace. Le détail affiche la catégorie sélectionnée, son calcul et
+ses seules lignes, déjà soumises aux filtres du rapport et du bloc. **Autres** ouvre
+exactement les lignes regroupées. La pagination et le CSV respectent ce sous-ensemble.
+Le retour restaure le focus sur l’élément déclencheur sans modifier le rapport.
+**Voir toutes les données** conserve l’accès à toutes les lignes du bloc.

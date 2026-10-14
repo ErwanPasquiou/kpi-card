@@ -43,6 +43,9 @@ traitée dans Databricks ; le POC actuel sert à construire l'expérience utilis
 | Paramétrage | Votre tableau, Ajouter un bloc et Réglages fermés à chaque ouverture de l’édition. Sous-rubriques repliables : Contenu, Données et période, Filtres, Objectif, Présentation et Disposition, selon le bloc. |
 | Graphiques | Barres, courbes, aires, paliers, points ; anneau et barres horizontales par colonne de catégorie ; choix du KPI ; période héritée du tableau ou spécifique au bloc. |
 | Objectifs | Mode simple et mode avancé avec douze valeurs mensuelles ; minimum à atteindre ou plafond à respecter. |
+| Analyse temporelle | Comparaison avec la période précédente de même durée, écart absolu/relatif, dates et accès aux lignes précédentes. |
+| Filtres globaux | Conditions par source, appliquées aux cartes, graphiques et tables compatibles, avec portée visible. |
+| Exploration | Clic sur une part d’anneau, une barre horizontale ou sa légende pour ouvrir uniquement ses lignes et son CSV. |
 | Comparaison | Valeur cible, écart absolu et relatif, statut et jauge sur les cartes ; ligne d'objectif sur les graphiques. |
 | Données brutes | Ouverture depuis une carte ou un graphique, pagination et téléchargement CSV des lignes du calcul. |
 | Catalogue KPI | Recherche, filtre par source, définition métier, méthode de calcul, données utilisées, SQL documenté et implémentation JavaScript. |
@@ -59,7 +62,7 @@ Trois tables fictives alimentent douze KPI :
 | Opérations | Opérations enregistrées, opérations livrées, livraisons dans les délais, projets concernés. |
 | Retours clients | Clients satisfaits, note moyenne, délai moyen de réponse, retours recueillis. |
 
-Les données sont générées localement sur environ dix-huit mois. Les calculs actuels
+Les données sont générées localement sur environ trente mois. Les calculs actuels
 s'exécutent en JavaScript. **Les requêtes présentées dans le catalogue sont des
 équivalents documentés ; elles ne sont pas exécutées sur une base.**
 

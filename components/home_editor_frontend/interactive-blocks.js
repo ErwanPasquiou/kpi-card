@@ -101,7 +101,7 @@
     parent.append(wrap);
     return input;
   }
-  function table(block, body, model, period, update) {
+  function table(block, body, model, period, update, globalFilters = []) {
     const surface = el("section", "source-table-block");
     // Empêcher une interaction interne de reconstruire l'inspecteur du bloc.
     surface.addEventListener("click", (event) => event.stopPropagation());
@@ -114,7 +114,7 @@
     function draw() {
       const scroll = surface.querySelector(".table-scroll")?.scrollLeft || 0;
       surface.replaceChildren();
-      const data = model.source(block.sourceId, period, block.filters || []);
+      const data = model.source(block.sourceId, period, block.filters || [], globalFilters);
       const sorted = F.sorted(data.rows, block.sort, data.table);
       const slice = F.page(sorted, page, block.pageSize);
       page = slice.index;
