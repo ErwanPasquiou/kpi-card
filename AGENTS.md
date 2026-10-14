@@ -28,6 +28,8 @@
 
 - `filters.js` centralise la validation, le filtrage typé, le tri et la pagination ; `interactive-blocks.js` porte leurs interfaces et les notes en lecture. Préserver les filtres scalaires et les sélections multiples `in`/`notIn` (OU entre valeurs, ET entre conditions). Utiliser le schéma explicite en priorité, sinon la détection de type conservatrice sans dépendre des noms de colonnes. Appliquer les filtres avant les calculs et conserver le même périmètre dans le détail et le CSV. Préserver la migration des anciennes tables vers `manualTable`. Les interactions en lecture sauvegardent localement, en édition elles restent dans le brouillon.
 
+- `chart-styles.js` centralise les présentations des séries et préserve les ruptures sur données manquantes. Les trois sections du panneau et leurs sous-rubriques sont fermées au début de chaque session d’édition ; les actions de sélection et erreurs ouvrent les rubriques nécessaires.
+
 ## Frontend et cache
 
 - Après toute modification d’un fichier CSS ou JavaScript chargé par `components/home_editor_frontend/index.html`, recalculer son SHA-256 et remplacer le paramètre `?v=` correspondant par ses 12 premiers caractères hexadécimaux. Faire de même pour tout nouvel asset chargé avec cette convention.

@@ -330,3 +330,23 @@ distinctes. Le mode catalogue ne lit ni ne réécrit la collection locale de tab
 - Le POC accepte jusqu'à 200 tableaux, avec des dispositions de 100 lignes maximum.
 - `editor.js` gère les interactions et les échanges avec Streamlit Components v1 :
   https://docs.streamlit.io/develop/concepts/custom-components/components-v1/intro
+
+## Panneau replié et présentations des graphiques
+
+À chaque entrée en modification (y compris création), **Votre tableau**, **Ajouter
+un bloc** et **Réglages** sont fermés. Sélectionner un bloc ouvre ses réglages ; les
+sous-rubriques restent fermées sauf celle contenant le champ ciblé. Leur état est
+conservé pendant cette session d’édition, puis réinitialisé à la suivante.
+
+Dans **Réglages → Présentation**, un graphique propose cinq formes :
+- **Barres** : comparer les valeurs par période.
+- **Courbe** : suivre une évolution continue entre les observations.
+- **Aire** : la même courbe avec un remplissage jusqu’à zéro (pas un cumul).
+- **Paliers** : relier les observations par segments horizontaux puis verticaux ;
+  ce rendu ne suppose aucune observation supplémentaire entre deux dates.
+- **Points** : afficher chaque observation sans relier les périodes.
+
+Les cinq formes utilisent les mêmes calculs, filtres, périodes, détails CSV et
+objectifs pointillés. Les valeurs manquantes interrompent les courbes et les aires ;
+les zéros restent visibles. `chart-styles.js` centralise les formes et la géométrie.
+Les anciens `bar`/`line` sont conservés, une forme inconnue revient à `bar`.

@@ -6,6 +6,7 @@
   const B = typeof module !== "undefined" && module.exports ? require("./content-blocks.js") : root.ContentBlocks;
   const F = typeof module !== "undefined" && module.exports ? require("./filters.js") : root.KPIFilters;
   const COLS = 6;
+  const C = typeof module !== "undefined" && module.exports ? require("./chart-styles.js") : root.ChartStyles;
   const MAX_ROWS = 100;
   // "title" reste accepté en entrée ; normalisé en texte de niveau 1.
   const TYPES = ["text", "title", "chart", "card", "separator", "table", "manualTable", "callout"];
@@ -70,7 +71,7 @@
         id: raw.id, type, row: raw.row, col: raw.col, span: raw.span,
         content: String(raw.content ?? "").slice(0, 5000),
         ...editorial,
-        chartKind: raw.chartKind === "line" ? "line" : "bar",
+        chartKind: C.normalize(raw.chartKind),
         ...(chartData ? {chartData} : {}),
         ...(["chart", "card"].includes(raw.type) ? {
           kpiId, filters,

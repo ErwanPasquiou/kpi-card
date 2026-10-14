@@ -40,8 +40,8 @@ traitée dans Databricks ; le POC actuel sert à construire l'expérience utilis
 | Tableau | Sources Ventes, Opérations ou Retours clients ; pagination 10/25/50 lignes ; tri et filtres depuis les en-têtes en lecture. Les anciens tableaux manuels sont conservés. |
 | Encadré vivant | Post-it en lecture ; un clic ouvre la saisie, enregistrer ou annuler revient au texte. |
 | Filtres des blocs | Valeurs disponibles à cocher, sélection multiple et recherche ; conditions adaptées au type déclaré ou détecté de la colonne. Même périmètre pour calcul, détail et CSV. |
-| Paramétrage | Rubriques repliables : Contenu, Données et période, Filtres, Objectif, Présentation et Disposition, selon le bloc. |
-| Graphiques | Barres ou courbes ; choix du KPI ; période héritée du tableau ou spécifique au bloc. |
+| Paramétrage | Votre tableau, Ajouter un bloc et Réglages fermés à chaque ouverture de l’édition. Sous-rubriques repliables : Contenu, Données et période, Filtres, Objectif, Présentation et Disposition, selon le bloc. |
+| Graphiques | Barres, courbes, aires, paliers ou points ; choix du KPI ; période héritée du tableau ou spécifique au bloc. |
 | Objectifs | Mode simple et mode avancé avec douze valeurs mensuelles ; minimum à atteindre ou plafond à respecter. |
 | Comparaison | Valeur cible, écart absolu et relatif, statut et jauge sur les cartes ; ligne d'objectif sur les graphiques. |
 | Données brutes | Ouverture depuis une carte ou un graphique, pagination et téléchargement CSV des lignes du calcul. |

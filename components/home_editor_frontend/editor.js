@@ -8,6 +8,7 @@
   const B = window.ContentBlocks;
   const F = window.KPIFilters;
   const I = window.InteractiveBlocks;
+  const C = window.ChartStyles;
   const dataModel = K.createModel();
   const $ = (id) => document.getElementById(id);
   const root = $("editor"), canvas = $("canvas");
@@ -335,15 +336,18 @@
 
   function startEditing() {
     editing = true;
+    selectedId = null;
+    for (const id of ["board-section", "palette-section", "settings-section"]) $(id).open = false;
+    inspectorSections.clear();
     rows = Math.min(L.MAX_ROWS, Math.max(3, lastRow() + 2));
     render();
     notify("Choisissez un bloc dans le panneau, puis déposez-le sur une case libre.");
-    $("palette").querySelector("button").focus();
+    $("palette-section").querySelector("summary").focus({preventScroll: true});
   }
 
   function save() {
     if (!draftBoard.name.trim()) {
-      $("dashboard-name").focus();
+      focusInspector("dashboard-name");
       return notify("Le tableau de bord doit avoir un nom.", true);
     }
     const invalidTarget = blocks.find((block) => ["chart", "card"].includes(block.type) && T.validationError(block.target, block.kpiId));
@@ -589,21 +593,18 @@
       svg.append(svgNode("path", {d: `M77 ${y}H628`, fill: "none", stroke: "#edf1f4"}),
         svgNode("text", {x: 68, y: y + 4, "text-anchor": "end"}, T.formatValue(value, result.kpi, true)));
     }
-    if (block.chartKind === "line") {
-      let path = "", connected = false;
-      series.forEach((point, index) => {
-        if (point.value === null) { connected = false; return; }
-        path += `${connected ? "L" : "M"}${xAt(index)} ${yAt(point.value)} `;
-        connected = true;
-      });
-      svg.append(svgNode("path", {d: path, fill: "none", stroke: "#247db0", "stroke-width": 3, "stroke-linejoin": "round"}));
+    if (["line", "area", "step"].includes(block.chartKind)) {
+      for (const path of C.paths(series, block.chartKind, xAt, yAt, yAt(0))) {
+        if (block.chartKind === "area") svg.append(svgNode("path", {d: path.area, fill: "#72bad7", "fill-opacity": 0.3, stroke: "none"}));
+        svg.append(svgNode("path", {d: path.stroke, fill: "none", stroke: "#247db0", "stroke-width": 3, "stroke-linejoin": "round"}));
+      }
     }
     const stride = Math.max(1, Math.ceil(series.length / 6));
     series.forEach((point, index) => {
       const x = xAt(index);
       if (point.value !== null) {
         const y = yAt(point.value), width = Math.min(34, 360 / series.length);
-        const mark = block.chartKind === "line" ? svgNode("circle", {cx: x, cy: y, r: 3.5, fill: "#247db0"}) :
+        const mark = block.chartKind !== "bar" ? svgNode("circle", {cx: x, cy: y, r: block.chartKind === "dots" ? 5 : 3.5, fill: "#247db0"}) :
           svgNode("rect", {x: x - width / 2, y, width, height: Math.max(0, 176 - y), rx: 3, fill: index === series.length - 1 ? "#243977" : "#72bad7"});
         mark.append(svgNode("title", {}, `${point.label} : ${K.formatValue(point.value, result.kpi)} · ${point.count} lignes`));
         svg.append(mark);
@@ -651,6 +652,7 @@
 
   function selectBlock(id) {
     selectedId = id;
+    $("settings-section").open = true;
     pending = null;
     clearPreview();
     canvas.querySelectorAll(".block").forEach((node) => {
@@ -679,13 +681,13 @@
     node.scrollIntoView({block: "nearest"});
   }
 
-  function inspectorSection(inspector, key, title, openByDefault = false) {
+  function inspectorSection(inspector, key, title) {
     const stateKey = inspector.dataset.blockKey;
     if (!inspectorSections.has(stateKey)) inspectorSections.set(stateKey, {});
     const state = inspectorSections.get(stateKey);
     const section = el("details", "inspector-section");
     section.dataset.section = key;
-    section.open = state[key] ?? openByDefault;
+    section.open = state[key] ?? false;
     section.append(el("summary", "", title));
     const content = el("div", "inspector-section-content");
     section.append(content);
@@ -813,7 +815,7 @@
       label.htmlFor = "chart-kind";
       const select = el("select", "field");
       select.id = "chart-kind";
-      for (const [value, text] of [["bar", "Barres"], ["line", "Courbe"]]) {
+      for (const [value, text] of C.KINDS) {
         const option = el("option", "", text);
         option.value = value;
         select.append(option);

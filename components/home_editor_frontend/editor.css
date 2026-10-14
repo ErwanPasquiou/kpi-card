@@ -387,3 +387,8 @@ textarea.field { resize: vertical; min-height: 100px; }
 .note-preview:hover { box-shadow: 0 3px 12px #163e4d18; }
 .note-heading { display: block; margin-bottom: 10px; font-size: 17px; }
 .note-text { display: block; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
+
+.sidebar-section { border-bottom: 1px solid #dce6ed; padding: 12px 0; }
+.sidebar-section > summary { font-size: 15px; font-weight: 700; color: #234e64; cursor: pointer; padding: 9px 0; }
+.sidebar-section-body, .sidebar-section > .dashboard-settings { padding-top: 12px; }
+.sidebar-section > .inspector { border-top: 0; margin-top: 8px; }

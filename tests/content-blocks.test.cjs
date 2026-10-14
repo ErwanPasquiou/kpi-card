@@ -6,6 +6,26 @@ const D = require("../components/home_editor_frontend/dashboards.js");
 const layout = (...blocks) => L.normalize({version: 1, blocks});
 const block = (type, extra = {}) => ({id: "a", type, row: 0, col: 0, span: 3, content: "Contenu personnalisé", ...extra});
 
+test("les cinq présentations de graphique survivent à la sauvegarde", () => {
+  const C=require("../components/home_editor_frontend/chart-styles.js");
+  for(const [chartKind] of C.KINDS) {
+    const saved=layout(block("chart",{chartKind,kpiId:"revenue",filters:[{column:"region",op:"in",value:["Bretagne","Occitanie"]}]}));
+    assert.equal(saved.blocks[0].chartKind,chartKind);
+    assert.deepEqual(L.normalize(JSON.parse(JSON.stringify(saved))),saved);
+  }
+  assert.equal(layout(block("chart",{chartKind:"inconnu"})).blocks[0].chartKind,"bar");
+});
+test("aires et paliers préservent les trous et les zéros des séries", () => {
+  const C=require("../components/home_editor_frontend/chart-styles.js");
+  const series=[{value:2},{value:0},{value:null},{value:3}];
+  const paths=C.paths(series,"area",i=>i*10,v=>100-v*10,100);
+  assert.equal(paths.length,2);
+  assert.equal(paths[0].area,"M0 80 L10 100 L10 100 L0 100 Z");
+  assert.equal(paths[1].stroke,"M30 70");
+  assert.equal(C.paths(series,"step",i=>i*10,v=>100-v*10,100)[0].stroke,"M0 80 H10 V100");
+  assert.deepEqual(C.paths([{value:null}],"area",i=>i,v=>v,0),[]);
+});
+
 test("les anciens titres et textes gardent leur contenu et leur position", () => {
   const title = layout(block("title")).blocks[0];
   assert.equal(title.type, "text");

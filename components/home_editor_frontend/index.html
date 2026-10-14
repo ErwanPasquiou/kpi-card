@@ -4,18 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>KPI-Card · Tableaux de bord</title>
-  <link rel="stylesheet" href="editor.css?v=17254c346d16">
+  <link rel="stylesheet" href="editor.css?v=f878f4693539">
   <link rel="stylesheet" href="catalogue.css?v=71b32b77c2ef">
   <script defer src="filters.js?v=06b62e9993ca"></script>
   <script defer src="data.js?v=2535e6faf374"></script>
   <script defer src="targets.js?v=8cccc5ee0871"></script>
   <script defer src="content-blocks.js?v=ec1383345bf6"></script>
-  <script defer src="layout.js?v=04f511261b0b"></script>
+  <script defer src="chart-styles.js?v=10a82eaf9d19"></script>
+  <script defer src="layout.js?v=38f51dfec684"></script>
   <script defer src="dashboards.js?v=40c70174a710"></script>
   <script defer src="catalogue-model.js?v=fe5abdbd9365"></script>
   <script defer src="catalogue.js?v=f2052cf3c30f"></script>
   <script defer src="interactive-blocks.js?v=3eebf529bc16"></script>
-  <script defer src="editor.js?v=534ad192e88f"></script>
+  <script defer src="editor.js?v=64373ee5b708"></script>
 </head>
 <body>
   <main id="editor" class="editor" aria-label="Vos tableaux de bord KPI-Card">
@@ -64,8 +65,9 @@
         <button id="add-row" class="add-row" type="button" hidden>+ Ajouter une ligne</button>
       </section>
       <aside id="sidebar" class="sidebar" aria-label="Panneau de modification" hidden>
-        <section class="dashboard-settings">
-          <h2>Votre tableau</h2>
+        <details id="board-section" class="sidebar-section">
+          <summary>Votre tableau</summary>
+          <div class="dashboard-settings">
           <label class="field-label" for="dashboard-name">Nom</label>
           <input id="dashboard-name" class="field" maxlength="90" required>
           <label class="field-label" for="dashboard-description">Description</label>
@@ -73,12 +75,20 @@
           <label class="field-label" for="dashboard-period">Période par défaut</label>
           <select id="dashboard-period" class="field"></select>
           <p class="width-help">Appliquée aux graphiques et cartes qui suivent la période du tableau.</p>
-        </section>
-        <div class="panel-heading"><h2>Ajouter un bloc</h2><span class="panel-label">BIBLIOTHÈQUE</span></div>
+          </div>
+        </details>
+        <details id="palette-section" class="sidebar-section">
+        <summary>Ajouter un bloc</summary>
+        <div class="sidebar-section-body">
         <p class="hint">Glissez un bloc sur la grille, ou cliquez dessus puis sur une case libre. Un bloc Texte peut devenir un titre.</p>
         <div id="palette" class="palette"></div>
         <div id="placement-hint" class="placement-hint" hidden></div>
+        </div>
+        </details>
+        <details id="settings-section" class="sidebar-section">
+        <summary>Réglages</summary>
         <section id="inspector" class="inspector" aria-label="Réglages du bloc"></section>
+        </details>
         <p class="storage-note">« Enregistrer » conserve ce tableau dans votre navigateur.</p>
       </aside>
     </div>
