@@ -100,12 +100,8 @@
     return dataModel.evaluate(block.kpiId, metricPeriod(block, board), block.filters || [], R.filtersFor(board, block), previous);
   }
   function updateReport(patch) {
+    if (!editing || !draftBoard) return;
     Object.assign(draftBoard, patch);
-    if (!editing) {
-      draftBoard.updatedAt = Date.now();
-      collection = D.upsert(collection, draftBoard);
-      persistCollection("Réglages du rapport enregistrés.");
-    }
     renderCanvas(); renderInspector(); renderReportControls();
   }
   function renderReportControls() {
@@ -113,6 +109,16 @@
     host.hidden = view === "hub";
     host.replaceChildren();
     if (host.hidden) return;
+    if (!editing) {
+      host.append(el("p", "field-label", draftBoard.comparison === "none"
+        ? "Comparaison : désactivée" : "Comparaison : période précédente"));
+      const filters = Object.entries(draftBoard.globalFilters || {}).map(([id, conditions]) =>
+        K.tableDefinition(id).label + " : " + F.describe(conditions, K.tableDefinition(id)));
+      host.append(el("p", "filter-summary", filters.length
+        ? "Filtres globaux : " + filters.join(" · ") : "Aucun filtre global"));
+      host.append(el("p", "hint", "Passez en mode modification pour changer ces réglages."));
+      return;
+    }
     const label = el("label", "field-label", "Comparer les indicateurs");
     label.htmlFor = "report-comparison";
     const select = el("select", "field"); select.id = "report-comparison";

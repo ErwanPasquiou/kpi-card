@@ -404,9 +404,10 @@ Les objectifs restent ceux définis par l’utilisateur, sans ajustement automat
 
 La collection v2 conserve `globalFilters: {sourceId: conditions}` et `comparison`
 (`previous` ou `none`) au niveau du rapport. Les anciennes sauvegardes reçoivent
-une liste de filtres vide et la comparaison précédente. En lecture les changements
-sont sauvegardés localement ; en édition ils sont enregistrés ou annulés avec le
-brouillon. Jusqu’à 20 conditions globales par source et 20 locales par bloc.
+une liste de filtres vide et la comparaison précédente. La comparaison et les filtres
+globaux sont modifiables uniquement en édition, puis enregistrés ou annulés avec le
+brouillon. En lecture, seul leur résumé est affiché et leurs effets restent appliqués.
+Jusqu’à 20 conditions globales par source et 20 locales par bloc.
 `report-analysis.js` centralise leur validation, portée et les écarts calculés.
 
 Les parts d’anneau, barres horizontales et lignes de légende sont accessibles au clic
