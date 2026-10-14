@@ -21,7 +21,8 @@
     }
     node.value = String(value); parent.append(caption, node); return node;
   }
-  function filterEditor(parent, table, filters, onChange, fixedColumn = null) {
+  function filterEditor(parent, table, filters, onChange, fixedColumn = null, rows = []) {
+    table = F.resolveTable(table, rows);
     const wrap = el("div", "filters-editor");
     const summary = el("div", "filter-chips");
     filters.forEach((filter, index) => {
@@ -37,30 +38,65 @@
     const input = el("input", "field"); input.id = "filter-value-" + ++sequence; caption.htmlFor = input.id;
     input.maxLength = 240; input.autocomplete = "off";
     const message = el("p", "target-error"); message.setAttribute("role", "alert");
-    const updateValue = () => { input.disabled = ["empty", "notEmpty"].includes(operator.value); };
+    const choices = el("fieldset", "filter-values");
+    choices.append(el("legend", "", "Valeurs disponibles"));
+    const search = el("input", "field"); search.type = "search"; search.placeholder = "Rechercher une valeur";
+    search.setAttribute("aria-label", "Rechercher une valeur");
+    const count = el("p", "width-help"); count.setAttribute("role", "status");
+    const list = el("div", "filter-values-list");
+    const more = button("Afficher davantage", () => { limit += 100; drawValues(); });
+    choices.append(search, count, list, more);
+    let available = [], selected = new Set(), limit = 100;
+    function drawValues() {
+      list.replaceChildren();
+      const matching = available.filter((value) => String(value).toLocaleLowerCase("fr").includes(search.value.toLocaleLowerCase("fr")));
+      for (const value of matching.slice(0, limit)) {
+        const label = el("label", "filter-value-option");
+        const check = el("input"); check.type = "checkbox"; check.checked = selected.has(value);
+        check.addEventListener("change", () => {
+          if (check.checked && selected.size >= 500) { check.checked = false; message.textContent = "Maximum 500 valeurs par filtre."; return; }
+          if (check.checked) selected.add(value); else selected.delete(value);
+          count.textContent = selected.size + " valeur(s) sélectionnée(s) · " + matching.length + " disponible(s)";
+        });
+        label.append(check, el("span", "", String(value))); list.append(label);
+      }
+      if (!matching.length) list.append(el("p", "width-help", "Aucune valeur disponible pour cette recherche et cette période."));
+      count.textContent = selected.size + " valeur(s) sélectionnée(s) · " + matching.length + " disponible(s)";
+      more.hidden = matching.length <= limit;
+    }
+    search.addEventListener("input", () => { limit = 100; drawValues(); });
+    const updateValue = () => {
+      const multiple = ["in", "notIn"].includes(operator.value), noValue = ["empty", "notEmpty"].includes(operator.value);
+      choices.hidden = !multiple; input.hidden = caption.hidden = multiple || noValue;
+      input.disabled = multiple || noValue;
+      message.textContent = "";
+    };
     const updateColumn = () => {
       const column = table.columns.find((column) => column.key === field.value);
       operator.replaceChildren();
       for (const op of F.operators(column)) {
-        const option = el("option", "", F.LABELS[op]); option.value = op; operator.append(option);
+        const dateLabel = column.kind === "date" ? {eq: "À la date du", ne: "À une autre date que", gte: "À partir du", lte: "Jusqu’au"}[op] : null;
+        const option = el("option", "", dateLabel || F.LABELS[op]); option.value = op; operator.append(option);
       }
-      operator.value = column.kind === "text" ? "contains" : "eq";
+      operator.value = "in";
+      available = F.values(rows, column); selected = new Set(); search.value = ""; limit = 100; drawValues();
       input.type = column.kind === "date" ? "date" : "text";
       input.inputMode = column.kind === "number" ? "decimal" : "text";
       input.value = ""; input.placeholder = column.kind === "number" ? "Ex. 1000 ou 95,5" : "Valeur recherchée";
       message.textContent = ""; updateValue();
     };
     field.addEventListener("change", updateColumn); operator.addEventListener("change", updateValue); updateColumn();
-    form.append(caption, input, message);
+    form.append(caption, input, choices, message);
     const submit = el("button", "button small", "Appliquer le filtre"); submit.type = "submit";
     submit.disabled = filters.length >= F.MAX_FILTERS; form.append(submit);
     form.addEventListener("submit", (event) => {
       event.preventDefault();
-      const next = F.normalize([...filters, {column: field.value, op: operator.value, value: input.value}], table);
-      if (!next) { message.textContent = "Saisissez une valeur valide pour cette colonne (nombre, date ou texte non vide)."; input.focus(); return; }
+      const multiple = ["in", "notIn"].includes(operator.value);
+      const next = F.normalize([...filters, {column: field.value, op: operator.value, value: multiple ? [...selected] : input.value}], table);
+      if (!next) { message.textContent = multiple ? "Sélectionnez au moins une valeur." : "Saisissez une valeur valide pour cette colonne."; (multiple ? search : input).focus(); return; }
       onChange(next);
     });
-    wrap.append(form, el("p", "width-help", "Les conditions se combinent avec ET, en plus de la période. Maximum 20 filtres."));
+    wrap.append(form, el("p", "width-help", "Valeurs de la source sur la période du bloc, avant les autres filtres. OU entre les valeurs choisies, ET entre les conditions. Maximum 20 filtres."));
     if (filters.length) wrap.append(button("Effacer tous les filtres", () => onChange([])));
     parent.append(wrap);
     return input;
@@ -98,7 +134,7 @@
           button("Tri décroissant", () => commit({sort: {column: column.key, direction: "desc"}})),
           button("Fermer", () => { selectedColumn = null; draw(); surface.querySelector('[data-column="' + column.key + '"]')?.focus(); }));
         panel.append(controls);
-        filterEditor(panel, data.table, block.filters || [], (filters) => commit({filters}), column.key);
+        filterEditor(panel, data.table, block.filters || [], (filters) => commit({filters}), column.key, model.source(block.sourceId, period).rows);
         surface.append(panel);
       }
       const wrap = el("div", "table-scroll");
@@ -147,6 +183,19 @@
     draw(); body.append(surface);
   }
   function note(block, body, update) {
+    const host = el("div", "note-host");
+    body.append(host);
+    function showNote(focus = false) {
+      host.replaceChildren();
+      const preview = button("", () => showEditor(), "editorial-callout note-preview tone-" + (block.tone || "info"));
+      preview.setAttribute("aria-label", "Modifier la note : " + (block.heading || "Sans titre"));
+      if (block.heading) preview.append(el("strong", "note-heading", block.heading));
+      preview.append(el("span", "note-text", block.content || "Cliquez pour écrire une note."));
+      host.append(preview);
+      if (focus) preview.focus();
+    }
+    function showEditor() {
+    host.replaceChildren();
     const tone = {info: "Information", success: "Décision / réussite", warning: "Point de vigilance"};
     const box = el("form", "editorial-callout live-note tone-" + (block.tone || "info"));
     box.append(el("span", "callout-label", tone[block.tone] || tone.info));
@@ -158,19 +207,23 @@
     const actions = el("div", "table-controls");
     const save = el("button", "button small", "Enregistrer la note"); save.type = "submit";
     const cancel = button("Annuler la saisie", () => {
-      title.value = block.heading || ""; content.value = block.content;
-      status.textContent = "Saisie annulée."; dirty();
+      showNote(true);
     });
-    function dirty() { const changed = title.value !== (block.heading || "") || content.value !== block.content; save.disabled = cancel.disabled = !changed; }
+    function dirty() { save.disabled = title.value === (block.heading || "") && content.value === block.content; }
     for (const input of [title, content]) input.addEventListener("input", () => { dirty(); status.textContent = "Note modifiée, à enregistrer."; });
     box.addEventListener("submit", (event) => {
       event.preventDefault();
       const saved = update({heading: title.value, content: content.value});
       if (saved === false) { status.textContent = "La note n’a pas pu être enregistrée."; return; }
-      dirty(); status.textContent = saved === "session" ? "Note conservée pour cette session uniquement." : "Note enregistrée dans ce navigateur.";
+      showNote(true);
     });
     actions.append(save, cancel); box.append(headingLabel, title, contentLabel, content, actions, status);
-    dirty(); body.append(box);
+    box.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); showNote(true); }
+    });
+    dirty(); host.append(box); title.focus();
+    }
+    showNote();
   }
   root.InteractiveBlocks = {filterEditor, table, note};
 })(globalThis);

@@ -71,7 +71,9 @@ du navigateur (Streamlit autorise la mise en cache de ces fichiers).
 - Les anciens **Tableaux manuels** restent modifiables et duplicables (6 colonnes,
   20 lignes, 240 caractères par cellule). Ils ne sont plus proposés à l’ajout.
 - **Encadré** met en évidence une information, un point de vigilance ou une décision.
-  En lecture, saisir directement son titre et son texte puis **Enregistrer la note**.
+  En lecture, seul le titre et le texte apparaissent comme un post-it. Cliquer sur la note
+  (ou Entrée/Espace au clavier) ouvre les champs, puis **Enregistrer la note** revient
+  au post-it. Annuler ou Échap ferme la saisie sans la conserver.
   **Annuler la saisie** restaure la dernière note enregistrée. Sans enregistrement,
   quitter le rapport perd la saisie. La sauvegarde appartient à ce navigateur.
 - **Dupliquer**, dans Disposition, crée une copie indépendante avec la même largeur
@@ -143,6 +145,27 @@ Les cartes et graphiques proposent la rubrique **Filtres** dans leurs réglages.
 Les colonnes proviennent de la source du KPI. Un changement de KPI conserve les filtres
 si la source reste identique ; sinon ils sont retirés. Les objectifs restent inchangés
 lors d’un changement de filtre ; adapter la cible au périmètre est un choix utilisateur.
+
+**Est parmi** et **N’est pas parmi** proposent les valeurs distinctes de la source
+sur la période du bloc, avant les autres filtres et les règles métier du KPI. Cocher
+plusieurs valeurs, rechercher dans la liste et appliquer. Les choix d’une condition
+sont combinés avec OU, les conditions entre elles avec ET. Une sélection vide est
+refusée. Les valeurs nulles se filtrent avec Est vide / N’est pas vide. Jusqu’à 500
+valeurs par condition ; listes rendues par lots de 100, avec Afficher davantage.
+La recherche conserve les choix déjà cochés. Les anciens filtres scalaires restent lus.
+
+Les types explicites du schéma sont prioritaires. Sinon `resolveTable` détecte les
+nombres JavaScript finis, les dates ISO valides YYYY-MM-DD et le texte sur l’ensemble
+des valeurs non nulles disponibles. Les colonnes mixtes ou entièrement vides restent
+textuelles ; les chaînes numériques restent du texte pour préserver les identifiants
+et leurs zéros initiaux. Aucun nom de colonne n’est utilisé pour décider du type.
+La détection porte sur la source entière, avant restriction de période.
+
+Les trois sources POC restent déclarées dans le registre. Un futur connecteur devra
+fournir les lignes typées et/ou leur schéma à ce moteur : cette évolution ne réalise
+pas un import universel ni une connexion Databricks. Les dates non ISO et timestamps
+nécessiteront une normalisation explicite dans cet adaptateur. Pour les volumes de
+production, la recherche des valeurs distinctes devra être paginée côté serveur.
 
 Les textes sont comparés sans distinction de casse ou d’accents (`eq`, `ne`, `contains`).
 Les nombres et dates acceptent `eq`, `ne`, `gte`, `lte`. Tous acceptent `empty` et

@@ -742,7 +742,7 @@
       });
       const periodLabel = el("label", "field-label", "Période du bloc"); periodLabel.htmlFor = "block-period";
       const period = el("select", "field"); period.id = "block-period"; fillPeriods(period, block.period, true);
-      period.addEventListener("change", () => { block.period = period.value; renderCanvas(); });
+      period.addEventListener("change", () => { block.period = period.value; renderCanvas(); renderInspector(); focusInspector("block-period"); });
       const sizeLabel = el("label", "field-label", "Lignes par page"); sizeLabel.htmlFor = "block-page-size";
       const size = el("select", "field"); size.id = "block-page-size";
       for (const count of [10, 25, 50]) { const option = el("option", "", String(count)); option.value = String(count); size.append(option); }
@@ -800,11 +800,12 @@
       renderTargetSettings(inspectorSection(inspector, "target", "Objectif"), block, result);
     }
     if (metric || block.type === "table") {
-      const table = K.tableDefinition(metric ? K.definition(block.kpiId).table : block.sourceId);
+      const sourceData = dataModel.source(metric ? K.definition(block.kpiId).table : block.sourceId, metricPeriod(block));
+      const table = sourceData.table;
       I.filterEditor(inspectorSection(inspector, "filters", "Filtres", true), table, block.filters || [], (filters) => {
         block.filters = filters; renderCanvas(); renderInspector();
         notify(filters.length ? "Filtres appliqués au bloc. Enregistrez le tableau pour les conserver." : "Filtres retirés.");
-      });
+      }, null, sourceData.rows);
     }
     if (block.type === "chart") {
       const presentation = inspectorSection(inspector, "presentation", "Présentation");

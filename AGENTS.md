@@ -26,7 +26,7 @@
 - Ne pas additionner les taux, moyennes ou nombres distincts pour produire un total : recalculer selon la définition du KPI. Documenter les règles de dates inclusives, périodes partielles, fuseau et valeurs sans observation quand elles sont concernées.
 - Le CSV est une sortie utilisateur : préserver le format attendu (UTF-8 avec BOM, séparateur point-virgule, décimales françaises) et la protection contre l’injection de formules dans les tableurs.
 
-- `filters.js` centralise la validation, le filtrage typé, le tri et la pagination ; `interactive-blocks.js` porte leurs interfaces et les notes en lecture. Appliquer les filtres avant les calculs et conserver le même périmètre dans le détail et le CSV. Préserver la migration des anciennes tables vers `manualTable`. Les interactions en lecture sauvegardent localement, en édition elles restent dans le brouillon.
+- `filters.js` centralise la validation, le filtrage typé, le tri et la pagination ; `interactive-blocks.js` porte leurs interfaces et les notes en lecture. Préserver les filtres scalaires et les sélections multiples `in`/`notIn` (OU entre valeurs, ET entre conditions). Utiliser le schéma explicite en priorité, sinon la détection de type conservatrice sans dépendre des noms de colonnes. Appliquer les filtres avant les calculs et conserver le même périmètre dans le détail et le CSV. Préserver la migration des anciennes tables vers `manualTable`. Les interactions en lecture sauvegardent localement, en édition elles restent dans le brouillon.
 
 ## Frontend et cache
 

@@ -38,8 +38,8 @@ traitée dans Databricks ; le POC actuel sert à construire l'expérience utilis
 | Blocs | Texte (Titre 1, Titre 2 ou paragraphe), Graphique, Carte, Séparateur, Tableau de données et Encadré ; largeur de une à six colonnes selon la place disponible. |
 | Composition | Alignement du texte, séparateurs configurables, encadrés information/vigilance/décision et duplication indépendante des blocs. |
 | Tableau | Sources Ventes, Opérations ou Retours clients ; pagination 10/25/50 lignes ; tri et filtres depuis les en-têtes en lecture. Les anciens tableaux manuels sont conservés. |
-| Encadré vivant | Saisie du titre et de la note en lecture, avec Enregistrer la note et Annuler la saisie. |
-| Filtres des blocs | Conditions sur les colonnes sources, appliquées avant calcul aux cartes, graphiques, données détaillées et CSV. |
+| Encadré vivant | Post-it en lecture ; un clic ouvre la saisie, enregistrer ou annuler revient au texte. |
+| Filtres des blocs | Valeurs disponibles à cocher, sélection multiple et recherche ; conditions adaptées au type déclaré ou détecté de la colonne. Même périmètre pour calcul, détail et CSV. |
 | Paramétrage | Rubriques repliables : Contenu, Données et période, Filtres, Objectif, Présentation et Disposition, selon le bloc. |
 | Graphiques | Barres ou courbes ; choix du KPI ; période héritée du tableau ou spécifique au bloc. |
 | Objectifs | Mode simple et mode avancé avec douze valeurs mensuelles ; minimum à atteindre ou plafond à respecter. |

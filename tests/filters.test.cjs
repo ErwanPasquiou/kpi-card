@@ -5,6 +5,44 @@ const K = require("../components/home_editor_frontend/data.js");
 const L = require("../components/home_editor_frontend/layout.js");
 const model = K.createModel("2026-10-14");
 const sales = K.tableDefinition("sales");
+
+test("sélection multiple : OU entre valeurs, ET entre colonnes et cache distinct", () => {
+  const selection=[filter("region","in",["Bretagne","Occitanie"]),filter("quantite","gte",3)];
+  const expected=model.source("sales","months3").rows.filter(r=>["Bretagne","Occitanie"].includes(r.region)&&r.quantite>=3&&r.statut==="Gagnée");
+  const result=model.evaluate("revenue","months3",selection);
+  assert.deepEqual(result.rows,expected);
+  assert.equal(result.value,expected.reduce((total,row)=>total+row.montant_ht,0));
+  assert.notEqual(result,model.evaluate("revenue","months3",[filter("region","in",["Bretagne"])]));
+  const saved=L.normalize({version:1,blocks:[{id:"multi",type:"card",row:0,col:0,span:2,kpiId:"revenue",filters:selection}]});
+  assert.deepEqual(L.normalize(JSON.parse(JSON.stringify(saved))),saved);
+  assert.deepEqual(F.normalize([filter("quantite","in",["2","3,5"])],sales)[0].value,[2,3.5]);
+  for(const value of [[],null,["Bretagne",null],Array(501).fill("Bretagne")])
+    assert.equal(F.normalize([filter("region","in",value)],sales),null);
+  assert.deepEqual(F.apply([{region:null},{region:"Bretagne"},{region:"Occitanie"}],[filter("region","notIn",["bretagne"])],sales),[{region:"Occitanie"}]);
+});
+test("détection indépendante des noms et priorité au schéma explicite", () => {
+  const rows=[{prix:2,jour:"2026-10-14",code:"001",mix:3,vide:null},{prix:10,jour:"2026-10-13",code:"002",mix:"n/a",vide:""}];
+  const inferred=F.resolveTable({id:"nouvelle"},rows);
+  assert.deepEqual(inferred.columns.map(c=>[c.key,c.kind]),[["prix","number"],["jour","date"],["code","text"],["mix","text"],["vide","text"]]);
+  assert.equal(F.inferKind(["2026-02-30"]),"text");
+  assert.equal(F.inferKind([NaN,Infinity]),"text");
+  assert.equal(F.resolveTable({columns:[{key:"jour",kind:"text"}]},rows).columns[0].kind,"text");
+  assert.deepEqual(F.apply(rows,[filter("prix","in",[2])],inferred),[rows[0]]);
+  assert.ok(F.operators(inferred.columns[1]).includes("gte"));
+  assert.ok(!F.operators(inferred.columns[0]).includes("contains"));
+  assert.deepEqual(F.values(rows,inferred.columns[0]),[2,10]);
+  assert.deepEqual(F.values([{code:"Équipe"},{code:"equipe"},{code:null},{code:"Autre"}],{key:"code",kind:"text"}),["Autre","equipe"]);
+});
+test("source sans type déclaré : détection active dans le modèle et les calculs", () => {
+  const column=sales.columns.find(c=>c.key==="quantite"), previous=column.kind;
+  try {
+    delete column.kind;
+    assert.equal(model.source("sales","week1").table.columns.find(c=>c.key==="quantite").kind,"number");
+    assert.equal(K.tableDefinition("sales").columns.find(c=>c.key==="quantite").kind,"number");
+    const filtered=model.evaluate("sales_count","week1",[filter("quantite","in",[2,3])]);
+    assert.ok(filtered.rows.every(row=>[2,3].includes(row.quantite)));
+  } finally { column.kind=previous; }
+});
 const filter = (column, op, value) => ({column, op, value});
 test("validation typée et rejet des filtres incohérents", () => {
   assert.deepEqual(F.normalize([filter("montant_ht", "gte", "1 000,50")], sales), [filter("montant_ht", "gte", 1000.5)]);

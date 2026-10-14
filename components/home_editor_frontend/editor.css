@@ -376,3 +376,14 @@ textarea.field { resize: vertical; min-height: 100px; }
   .table-scroll { max-height: 420px; }
   .metric-value { font-size: 24px; letter-spacing: -.5px; }
 }
+
+.filter-values { grid-column: 1 / -1; min-width: 0; border: 1px solid #cfdee6; border-radius: 10px; padding: 10px; }
+.filter-values[hidden], .filter-form [hidden] { display: none; }
+.filter-values-list { max-height: 190px; overflow: auto; margin: 8px 0; }
+.filter-value-option { display: flex; align-items: center; gap: 9px; padding: 7px 3px; cursor: pointer; overflow-wrap: anywhere; }
+.filter-value-option input { width: 16px; height: 16px; flex: 0 0 auto; }
+.note-host { height: 100%; }
+.note-preview { display: block; width: 100%; text-align: left; font: inherit; cursor: pointer; color: inherit; border-top: 0; border-right: 0; border-bottom: 0; }
+.note-preview:hover { box-shadow: 0 3px 12px #163e4d18; }
+.note-heading { display: block; margin-bottom: 10px; font-size: 17px; }
+.note-text { display: block; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }

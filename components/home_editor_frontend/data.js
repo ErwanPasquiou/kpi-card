@@ -94,7 +94,13 @@
     targetDirection: kpi.id === "response_time" ? "at_most" : "at_least",
   }));
   const definition = (id) => KPIS.find((item) => item.id === id) || KPIS[0];
-  const tableDefinition = (id) => TABLES.find((item) => item.id === id) || TABLES[0];
+  let schemaRows;
+  function tableDefinition(id) {
+    const table = TABLES.find((item) => item.id === id) || TABLES[0];
+    if (table.columns?.every((column) => ["text", "number", "date"].includes(column.kind))) return table;
+    schemaRows ||= generateTables(today());
+    return F.resolveTable(table, schemaRows[table.id] || []);
+  }
   const isKpi = (id) => KPIS.some((item) => item.id === id);
 
   function generateTables(end) {
@@ -148,7 +154,7 @@
   function createModel(referenceDate = today()) {
     const tables = generateTables(referenceDate), cache = new Map();
     function source(tableId, period = "rolling12", filters = []) {
-      const table = tableDefinition(tableId), range = bounds(period, referenceDate);
+      const table = F.resolveTable(TABLES.find((item) => item.id === tableId) || TABLES[0], tables[tableId] || tables.sales), range = bounds(period, referenceDate);
       const valid = F.normalize(filters, table);
       if (!valid) throw new Error("Filtres invalides pour cette source.");
       const dated = tables[table.id].filter((row) => row.date >= range.start && row.date <= range.end);

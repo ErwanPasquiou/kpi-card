@@ -2,14 +2,39 @@
 (function (root) {
   "use strict";
   const MAX_FILTERS = 20;
-  const LABELS = {eq: "Est égal à", ne: "Est différent de", contains: "Contient",
+  const LABELS = {in: "Est parmi", notIn: "N’est pas parmi", eq: "Est égal à", ne: "Est différent de", contains: "Contient",
     gte: "Est supérieur ou égal à", lte: "Est inférieur ou égal à",
     empty: "Est vide", notEmpty: "N’est pas vide"};
   const empty = (value) => value == null || value === "";
   const fold = (value) => String(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr");
+  const validDate = (value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+    Number.isFinite(Date.parse(value + "T00:00:00Z")) && new Date(value + "T00:00:00Z").toISOString().slice(0, 10) === value;
+  function inferKind(values) {
+    const present = values.filter((value) => !empty(value));
+    if (present.length && present.every((value) => typeof value === "number" && Number.isFinite(value))) return "number";
+    if (present.length && present.every(validDate)) return "date";
+    return "text";
+  }
+  function resolveTable(table, rows = []) {
+    const columns = table.columns || [...new Set(rows.flatMap((row) => Object.keys(row)))].map((key) => ({key, label: key}));
+    return {...table, columns: columns.map((column) => ({...column, label: column.label || column.key,
+      kind: ["number", "text", "date"].includes(column.kind) ? column.kind : inferKind(rows.map((row) => row[column.key]))}))};
+  }
+  function values(rows, column) {
+    const unique = new Map();
+    for (const row of rows) {
+      const value = row[column.key];
+      if (empty(value)) continue;
+      const normalized = normalize([{column: column.key, op: "eq", value: column.kind === "text" ? String(value) : value}], {columns: [column]});
+      if (!normalized) continue;
+      const clean = normalized[0].value;
+      unique.set(column.kind === "text" ? fold(clean) : clean, clean);
+    }
+    return [...unique.values()].sort((a, b) => column.kind === "number" ? a - b : String(a).localeCompare(String(b), "fr", {numeric: true}));
+  }
   function operators(column) {
     return column.kind === "number" || column.kind === "date" ?
-      ["eq", "ne", "gte", "lte", "empty", "notEmpty"] : ["eq", "ne", "contains", "empty", "notEmpty"];
+      ["in", "notIn", "eq", "ne", "gte", "lte", "empty", "notEmpty"] : ["in", "notIn", "eq", "ne", "contains", "empty", "notEmpty"];
   }
   function normalize(raw, table) {
     if (raw === undefined) return [];
@@ -19,6 +44,13 @@
       const column = table.columns.find((column) => column.key === item?.column);
       if (!column || !operators(column).includes(item.op)) return null;
       let value = item.value;
+      if (["in", "notIn"].includes(item.op)) {
+        if (!Array.isArray(value) || !value.length || value.length > 500) return null;
+        const parts = value.map((entry) => normalize([{column: column.key, op: "eq", value: entry}], table));
+        if (parts.some((part) => !part)) return null;
+        result.push({column: column.key, op: item.op, value: [...new Set(parts.map((part) => part[0].value))]});
+        continue;
+      }
       if (["empty", "notEmpty"].includes(item.op)) value = "";
       else if (column.kind === "number") {
         if (typeof value !== "number" && typeof value !== "string") return null;
@@ -48,6 +80,10 @@
       if (op === "notEmpty") return !empty(actual);
       if (empty(actual)) return false;
       const a = kinds[column] === "text" ? fold(actual) : actual;
+      if (["in", "notIn"].includes(op)) {
+        const matches = value.some((entry) => a === (kinds[column] === "text" ? fold(entry) : entry));
+        return op === "in" ? matches : !matches;
+      }
       const b = kinds[column] === "text" ? fold(value) : value;
       if (op === "eq") return a === b;
       if (op === "ne") return a !== b;
@@ -83,10 +119,10 @@
     return (filters || []).map((item) => {
       const label = table.columns.find((column) => column.key === item.column)?.label || item.column;
       return label + " " + LABELS[item.op].toLocaleLowerCase("fr") +
-        (["empty", "notEmpty"].includes(item.op) ? "" : " " + item.value);
+        (["empty", "notEmpty"].includes(item.op) ? "" : " " + (Array.isArray(item.value) ? item.value.join(" OU ") : item.value));
     }).join(" · ET · ");
   }
-  const api = {MAX_FILTERS, LABELS, operators, normalize, apply, normalizeSort, sorted, page, describe};
+  const api = {MAX_FILTERS, LABELS, inferKind, resolveTable, values, operators, normalize, apply, normalizeSort, sorted, page, describe};
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.KPIFilters = api;
 })(globalThis);
