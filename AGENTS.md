@@ -28,7 +28,7 @@
 
 - `filters.js` centralise la validation, le filtrage typé, le tri et la pagination ; `interactive-blocks.js` porte leurs interfaces et les notes en lecture. Préserver les filtres scalaires et les sélections multiples `in`/`notIn` (OU entre valeurs, ET entre conditions). Utiliser le schéma explicite en priorité, sinon la détection de type conservatrice sans dépendre des noms de colonnes. Appliquer les filtres avant les calculs et conserver le même périmètre dans le détail et le CSV. Préserver la migration des anciennes tables vers `manualTable`. Les interactions en lecture sauvegardent localement, en édition elles restent dans le brouillon.
 
-- `chart-styles.js` centralise les présentations des séries et préserve les ruptures sur données manquantes. Les trois sections du panneau et leurs sous-rubriques sont fermées au début de chaque session d’édition ; les actions de sélection et erreurs ouvrent les rubriques nécessaires.
+- `chart-styles.js` centralise les présentations des séries et préserve les ruptures sur données manquantes. Les répartitions catégorielles recalculent les agrégats par groupe ; les anneaux sont réservés aux KPI additifs, positifs et sans catégorie négative. Ne pas répartir implicitement un objectif global. Les trois sections du panneau et leurs sous-rubriques sont fermées au début de chaque session d’édition ; les actions de sélection et erreurs ouvrent les rubriques nécessaires.
 
 ## Frontend et cache
 

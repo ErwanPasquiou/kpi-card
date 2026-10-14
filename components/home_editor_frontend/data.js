@@ -90,6 +90,7 @@
     {id: "feedback_count", label: "Retours clients recueillis", table: "feedback", format: "integer", filter: all,
       formula: "Nombre de retours clients reçus.", calculate: (rows) => rows.length},
   ].map((kpi) => ({...kpi,
+    additive: ["revenue", "sales_count", "operations_count", "delivered_count", "feedback_count"].includes(kpi.id),
     targetMode: ["revenue", "sales_count", "operations_count", "delivered_count", "feedback_count"].includes(kpi.id) ? "prorata" : "fixed",
     targetDirection: kpi.id === "response_time" ? "at_most" : "at_least",
   }));

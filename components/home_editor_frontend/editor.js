@@ -533,8 +533,9 @@
       if (result.filters.length) body.append(el("p", "filter-summary", F.describe(result.filters, result.table)));
       if (target) body.append(renderTargetSummary(target, result.kpi, block.type === "chart"));
       if (block.type === "chart" && (result.rows.length || target)) {
-        body.append(renderChart(block, result, target));
-        if (target) {
+        body.append(C.categorical(block.chartKind) ? window.CategoryCharts.render(block, result) : renderChart(block, result, target));
+        if (target && C.categorical(block.chartKind)) body.append(el("p", "hint", "Objectif global du bloc, non réparti entre les catégories."));
+        if (target && !C.categorical(block.chartKind)) {
           const legend = el("div", "chart-legend");
           legend.append(el("span", "legend-actual", "Réalisé"),
             el("span", "legend-target", `Objectif par ${result.granularity}${target.mode === "prorata" ? " · proratisé" : target.target.mode === "monthly" ? " · personnalisé" : " · fixe"}`));
@@ -775,9 +776,11 @@
         block.kpiId = select.value;
         if (previous.table !== K.definition(block.kpiId).table) {
           block.filters = [];
+          block.groupBy = C.dimension(K.tableDefinition(K.definition(block.kpiId).table))?.key || "";
           notify("Source modifiée : les filtres de l’ancien indicateur ont été retirés.");
         }
         block.target = T.normalize({period: block.target?.period}, block.kpiId);
+        if (block.chartKind === "donut" && !K.definition(block.kpiId).additive) block.chartKind = "horizontal";
         if (!block.content || block.content === previous.label) block.content = K.definition(block.kpiId).label;
         renderCanvas(); renderInspector();
         if (hadTarget) notify("Objectif réinitialisé : renseignez la cible du nouveau KPI.");
@@ -818,11 +821,24 @@
       for (const [value, text] of C.KINDS) {
         const option = el("option", "", text);
         option.value = value;
+        if (value === "donut" && !K.definition(block.kpiId).additive) option.disabled = true;
         select.append(option);
       }
       select.value = block.chartKind;
-      select.addEventListener("change", () => { block.chartKind = select.value; renderCanvas(); });
+      select.addEventListener("change", () => { block.chartKind = select.value; renderCanvas(); renderInspector(); focusInspector("chart-kind"); });
       presentation.append(label, select);
+      if (!K.definition(block.kpiId).additive) presentation.append(el("p", "hint", "Anneau réservé aux montants et comptages. Pour ce KPI, utilisez les barres horizontales."));
+      if (C.categorical(block.chartKind)) {
+        const table = K.tableDefinition(K.definition(block.kpiId).table);
+        const groupLabel = el("label", "field-label", "Répartir par"); groupLabel.htmlFor = "chart-group";
+        const group = el("select", "field"); group.id = "chart-group";
+        for (const column of C.dimensions(table)) {
+          const option = el("option", "", column.label); option.value = column.key; group.append(option);
+        }
+        group.value = C.dimension(table, block.groupBy)?.key || ""; group.disabled = !group.options.length;
+        group.addEventListener("change", () => { block.groupBy = group.value; renderCanvas(); });
+        presentation.append(groupLabel, group, el("p", "hint", "Calcul sur les lignes filtrées. Jusqu’à 7 catégories principales et un groupe Autres ; le total reste celui du bloc."));
+      }
     }
     const layout = inspectorSection(inspector, "layout", "Disposition");
     layout.append(el("div", "field-label", "Largeur du bloc · colonnes"));

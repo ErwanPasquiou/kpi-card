@@ -6,7 +6,7 @@ const D = require("../components/home_editor_frontend/dashboards.js");
 const layout = (...blocks) => L.normalize({version: 1, blocks});
 const block = (type, extra = {}) => ({id: "a", type, row: 0, col: 0, span: 3, content: "Contenu personnalisé", ...extra});
 
-test("les cinq présentations de graphique survivent à la sauvegarde", () => {
+test("les sept présentations de graphique survivent à la sauvegarde", () => {
   const C=require("../components/home_editor_frontend/chart-styles.js");
   for(const [chartKind] of C.KINDS) {
     const saved=layout(block("chart",{chartKind,kpiId:"revenue",filters:[{column:"region",op:"in",value:["Bretagne","Occitanie"]}]}));

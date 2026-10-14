@@ -72,6 +72,7 @@
         content: String(raw.content ?? "").slice(0, 5000),
         ...editorial,
         chartKind: C.normalize(raw.chartKind),
+        ...(raw.type === "chart" ? {groupBy: C.dimension(K.tableDefinition(K.definition(kpiId).table), raw.groupBy)?.key || ""} : {}),
         ...(chartData ? {chartData} : {}),
         ...(["chart", "card"].includes(raw.type) ? {
           kpiId, filters,

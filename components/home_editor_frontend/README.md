@@ -350,3 +350,29 @@ Les cinq formes utilisent les mêmes calculs, filtres, périodes, détails CSV e
 objectifs pointillés. Les valeurs manquantes interrompent les courbes et les aires ;
 les zéros restent visibles. `chart-styles.js` centralise les formes et la géométrie.
 Les anciens `bar`/`line` sont conservés, une forme inconnue revient à `bar`.
+
+## Répartition par catégorie
+
+Choisir **Anneau** ou **Barres horizontales** dans **Réglages → Présentation**,
+puis **Répartir par** : les colonnes textuelles de la source sont proposées, dont
+Région/Produit pour les ventes et Équipe pour les opérations. `groupBy` enregistre
+la colonne ; changer de source sélectionne une colonne compatible. Les anciennes
+sauvegardes reçoivent une dimension par défaut sans changer leur présentation.
+
+Les groupes utilisent les lignes retenues après période, filtres du bloc et règles
+métier du KPI. Chaque valeur est recalculée par le même calcul métier, y compris les
+taux, moyennes et distincts. Le total du bloc reste calculé sur toutes ses lignes.
+Le classement est décroissant ; au-delà de huit catégories, sept sont affichées et
+les autres regroupées dans **Autres**, recalculé sur leurs lignes réunies. Les valeurs
+manquantes forment **Non renseigné**. Le détail/CSV du bloc conserve toutes les lignes.
+
+L’anneau est disponible pour les montants et comptages déclarés `additive` dans le
+registre, avec un total positif et aucune catégorie négative. Les parts sont des
+pourcentages du total filtré. Un taux, une moyenne ou un distinct ne forme pas un
+partage du total : utiliser les barres horizontales. Un changement vers un tel KPI
+remplace automatiquement l’anneau par des barres. Les anneaux invalides déjà sauvés
+ou sans total positif affichent une explication et les valeurs en barres.
+
+L’objectif reste global au bloc, visible dans son résumé ; aucune répartition
+arbitraire de la cible entre catégories. `chart-styles.js` groupe les lignes et
+`category-charts.js` rend l’anneau, les barres et leurs légendes lisibles au clavier.

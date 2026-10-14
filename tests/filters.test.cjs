@@ -6,6 +6,49 @@ const L = require("../components/home_editor_frontend/layout.js");
 const model = K.createModel("2026-10-14");
 const sales = K.tableDefinition("sales");
 
+test("répartition filtrée par région et produit : conservation des montants", () => {
+  const C=require("../components/home_editor_frontend/chart-styles.js");
+  const result=model.evaluate("revenue","months3",[filter("quantite","gte",3)]);
+  for(const key of ["region","produit"]) {
+    const split=C.distribution(result,key);
+    assert.equal(split.column.key,key);
+    assert.ok(split.ring);
+    assert.ok(Math.abs(split.groups.reduce((sum,g)=>sum+g.value,0)-result.value)<0.000001);
+    for(const group of split.groups) assert.equal(group.value,result.rows.filter(r=>r[key]===group.label).reduce((sum,r)=>sum+r.montant_ht,0));
+  }
+});
+test("répartition non additive : taux et distincts recalculés par équipe", () => {
+  const C=require("../components/home_editor_frontend/chart-styles.js");
+  for(const id of ["on_time","projects_count"]) {
+    const result=model.evaluate(id,"months3");
+    const split=C.distribution(result,"equipe");
+    assert.equal(split.ring,false);
+    for(const group of split.groups) assert.equal(group.value,result.kpi.calculate(result.rows.filter(r=>r.equipe===group.label)));
+  }
+});
+test("Autres recalcule sa moyenne, et les anneaux refusent négatifs, vides et zéros", () => {
+  const C=require("../components/home_editor_frontend/chart-styles.js");
+  const table={columns:[{key:"g",kind:"text",label:"Groupe"}]};
+  const rows=[{g:"A",v:100},{g:"B",v:40},{g:"C",v:20},{g:"C",v:0},{g:null,v:0}];
+  const kpi={calculate:rs=>rs.length?rs.reduce((n,r)=>n+r.v,0)/rs.length:null};
+  const split=C.distribution({table,rows,kpi,value:32},"g",2);
+  assert.equal(split.groups[1].value,15);
+  assert.equal(split.groups[1].count,4);
+  const sum={additive:true,calculate:rs=>rs.reduce((n,r)=>n+r.v,0)};
+  assert.equal(C.distribution({table,rows:[],kpi:sum,value:0},"g").ring,false);
+  assert.equal(C.distribution({table,rows:[{g:"A",v:0}],kpi:sum,value:0},"g").ring,false);
+  assert.equal(C.distribution({table,rows:[{g:"A",v:10},{g:"B",v:-2}],kpi:sum,value:8},"g").ring,false);
+  assert.equal(C.distribution({table,rows:[{g:"A",v:10}],kpi:sum,value:10},"g").ring,true);
+});
+test("dimension enregistrée, migration et changement de source sûrs", () => {
+  const make=(extra)=>L.normalize({version:1,blocks:[{id:"split",type:"chart",row:0,col:0,span:3,kpiId:"revenue",chartKind:"donut",groupBy:"region",...extra}]});
+  const saved=make({});
+  assert.equal(saved.blocks[0].groupBy,"region");
+  assert.deepEqual(L.normalize(JSON.parse(JSON.stringify(saved))),saved);
+  assert.notEqual(make({kpiId:"on_time",chartKind:"horizontal"}).blocks[0].groupBy,"region");
+  assert.ok(make({groupBy:undefined}));
+});
+
 test("sélection multiple : OU entre valeurs, ET entre colonnes et cache distinct", () => {
   const selection=[filter("region","in",["Bretagne","Occitanie"]),filter("quantite","gte",3)];
   const expected=model.source("sales","months3").rows.filter(r=>["Bretagne","Occitanie"].includes(r.region)&&r.quantite>=3&&r.statut==="Gagnée");
