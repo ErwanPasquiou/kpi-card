@@ -22,3 +22,8 @@ def render_home_editor():
     )
     if isinstance(collection, dict) and collection.get("version") == 2:
         st.session_state["dashboard_collection"] = collection
+
+
+def render_kpi_catalogue():
+    """Le catalogue utilise le même modèle de KPI que les blocs du hub."""
+    _editor(page="catalogue", sql_dialect="standard", key="kpi_catalogue", default=None)

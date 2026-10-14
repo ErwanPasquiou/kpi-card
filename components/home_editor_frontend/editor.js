@@ -4,6 +4,7 @@
   const L = window.HomeLayout;
   const D = window.Dashboards;
   const K = window.KPIData;
+  const T = window.KPITargets;
   const dataModel = K.createModel();
   const $ = (id) => document.getElementById(id);
   const root = $("editor"), canvas = $("canvas");
@@ -31,9 +32,11 @@
     arrow: '<path d="m14 5 7 7-7 7M3 12h18"/>',
   };
   let initialized = false, editing = false, selectedId = null, pending = null, dragging = null;
+  let catalogueMode = false;
   let blocks = [], saved = {version: 1, blocks: []}, storageKey = "", rows = 3, lastHeight = 0;
   let collection = {version: 2, dashboards: []}, view = "hub", draftBoard = null, isNew = false, lastDeleted = null;
   let favoritesOnly = false, detail = null, detailReturnFocus = null, dataPage = 0;
+  const inspectorSections = new Map();
   const PAGE_SIZE = 50;
   const clone = (data) => JSON.parse(JSON.stringify(data));
 
@@ -69,7 +72,8 @@
   }
 
   function resizeFrame() {
-    const height = Math.max(440, Math.ceil(root.getBoundingClientRect().height) + 2);
+    const surface = catalogueMode ? $("catalogue") : root;
+    const height = Math.max(440, Math.ceil(surface.getBoundingClientRect().height) + 2);
     if (height !== lastHeight) {
       lastHeight = height;
       send("streamlit:setFrameHeight", {height});
@@ -318,12 +322,20 @@
       $("dashboard-name").focus();
       return notify("Le tableau de bord doit avoir un nom.", true);
     }
+    const invalidTarget = blocks.find((block) => ["chart", "card"].includes(block.type) && T.validationError(block.target, block.kpiId));
+    if (invalidTarget) {
+      selectBlock(invalidTarget.id);
+      const issue = T.validationIssue(invalidTarget.target, invalidTarget.kpiId);
+      focusInspector(issue.month === null ? "block-target-value" : `block-target-month-${issue.month}`);
+      return notify(issue.message, true);
+    }
     const layout = L.normalize({version: 1, blocks});
     if (!layout) return notify("La disposition contient un emplacement invalide.", true);
     draftBoard = D.normalizeBoard({...draftBoard, layout, updatedAt: Date.now()});
     try { collection = D.upsert(collection, draftBoard); }
     catch (error) { return notify(error.message, true); }
     saved = clone(layout);
+    blocks = clone(layout.blocks);
     editing = isNew = false;
     selectedId = pending = dragging = null;
     render();
@@ -428,7 +440,7 @@
           if (event.target !== card || !["Enter", " "].includes(event.key)) return;
           event.preventDefault();
           selectBlock(block.id);
-          $("block-content").focus();
+          focusInspector("block-content");
         });
         const tools = el("div", "block-toolbar");
         const label = el("div", "block-toolbar-label");
@@ -448,7 +460,9 @@
         card.tabIndex = 0;
         card.setAttribute("role", "button");
         const result = metricResult(block);
-        card.setAttribute("aria-label", `${block.content || result.kpi.label} : ${K.formatValue(result.value, result.kpi)}. ${result.range.label}. Ouvrir les données brutes.`);
+        const target = T.evaluate(block.target, result);
+        const targetLabel = target ? ` Objectif : ${T.formatValue(target.value, result.kpi)}. Écart : ${T.formatDelta(target.delta, result.kpi)}. ${T.statusLabel(target)}.` : "";
+        card.setAttribute("aria-label", `${block.content || result.kpi.label} : ${K.formatValue(result.value, result.kpi)}. ${result.range.label}.${targetLabel} Ouvrir les données brutes.`);
         card.addEventListener("click", () => openBlockData(block, card));
         card.addEventListener("keydown", (event) => {
           if (event.target !== card || !["Enter", " "].includes(event.key)) return;
@@ -474,17 +488,52 @@
     if (block.type === "text") body.append(el("p", block.content ? "body-text" : "body-text block-placeholder", block.content || "Votre texte"));
     if (["chart", "card"].includes(block.type)) {
       const result = metricResult(block);
+      const target = T.evaluate(block.target, result);
       body.append(el("h3", "chart-heading", block.content || result.kpi.label),
         el("p", "demo-label", `${result.table.label} · Données fictives`),
         el("p", block.type === "card" ? "metric-value" : "metric-total", K.formatValue(result.value, result.kpi)));
       if (block.content && block.content !== result.kpi.label) body.append(el("p", "metric-definition", result.kpi.label));
       body.append(el("p", "metric-period", `${result.range.label} · ${result.rows.length.toLocaleString("fr-FR")} lignes`),
         el("p", "metric-range", K.rangeLabel(result.range)));
-      if (block.type === "chart" && result.rows.length) body.append(renderChart(block, result));
+      if (target) body.append(renderTargetSummary(target, result.kpi, block.type === "chart"));
+      if (block.type === "chart" && (result.rows.length || target)) {
+        body.append(renderChart(block, result, target));
+        if (target) {
+          const legend = el("div", "chart-legend");
+          legend.append(el("span", "legend-actual", "Réalisé"),
+            el("span", "legend-target", `Objectif par ${result.granularity}${target.mode === "prorata" ? " · proratisé" : target.target.mode === "monthly" ? " · personnalisé" : " · fixe"}`));
+          body.append(legend);
+        }
+      }
       if (!result.rows.length) body.append(el("p", "hint", "Aucune donnée sur cette période."));
       if (!editing) body.append(el("span", "data-link", "Voir les données →"));
     }
     return body;
+  }
+
+  function renderTargetSummary(comparison, kpi, compact = false) {
+    const state = comparison.met === null ? "unknown" : comparison.met ? "met" : "missed";
+    const summary = el("div", `target-summary target-${state}${compact ? " target-compact" : ""}`);
+    const heading = el("div", "target-summary-heading");
+    heading.append(el("span", "", comparison.target.direction === "at_most" ? "Plafond sur la période" : "Objectif sur la période"),
+      el("strong", "", T.formatValue(comparison.value, kpi)));
+    const variation = el("div", "target-variation");
+    variation.append(el("span", "target-delta", T.formatDelta(comparison.delta, kpi)));
+    if (comparison.relative !== null) variation.append(el("span", "target-relative", `(${T.formatRelative(comparison.relative)})`));
+    variation.append(el("span", "target-variation-label", "d’écart à l’objectif"));
+    summary.append(heading, variation, el("p", "target-status", T.statusLabel(comparison)));
+    if (!compact && comparison.ratio !== null) {
+      const track = el("div", "target-progress"), fill = el("span");
+      track.setAttribute("aria-hidden", "true");
+      fill.style.width = `${Math.max(0, Math.min(100, comparison.ratio))}%`;
+      track.append(fill);
+      const ratio = comparison.ratio.toLocaleString("fr-FR", {maximumFractionDigits: 1});
+      summary.append(track, el("p", "target-ratio", `${ratio} % ${comparison.target.direction === "at_most" ? "du plafond" : "de l’objectif"}`));
+    }
+    if (comparison.value === 0 && comparison.delta !== null) summary.append(el("p", "target-note", "Écart relatif non calculable : objectif nul."));
+    if (comparison.delta === null) summary.append(el("p", "target-note", "Aucune valeur disponible pour comparer à l’objectif."));
+    summary.append(el("p", "target-basis", T.description(comparison, kpi)));
+    return summary;
   }
 
   function svgNode(tag, attributes = {}, text = null) {
@@ -494,19 +543,19 @@
     return node;
   }
 
-  function renderChart(block, result) {
+  function renderChart(block, result, target = null) {
     const series = result.series;
     const maximum = result.kpi.format === "percent" ? 100 : result.kpi.format === "rating" ? 5 :
-      Math.max(1, ...series.map((point) => point.value || 0)) * 1.12;
+      Math.max(1, ...series.map((point) => point.value || 0), ...(target?.series || [])) * 1.12;
     const svg = svgNode("svg", {class: "chart kpi-chart", viewBox: "0 0 640 220", role: "img",
       "aria-label": `${result.kpi.label}, par ${result.granularity}. ${K.rangeLabel(result.range)}.`});
-    svg.append(svgNode("title", {}, series.map((point) => `${point.label} : ${K.formatValue(point.value, result.kpi)}`).join(" ; ")));
+    svg.append(svgNode("title", {}, series.map((point, index) => `${point.label} : ${K.formatValue(point.value, result.kpi)}${target ? `, objectif ${T.formatValue(target.series[index], result.kpi)}` : ""}`).join(" ; ")));
     const xAt = (index) => series.length === 1 ? 350 : 96 + index * 510 / (series.length - 1);
     const yAt = (value) => 176 - value / maximum * 148;
     for (const fraction of [0, 0.5, 1]) {
       const value = maximum * fraction, y = yAt(value);
       svg.append(svgNode("path", {d: `M77 ${y}H628`, fill: "none", stroke: "#edf1f4"}),
-        svgNode("text", {x: 68, y: y + 4, "text-anchor": "end"}, K.formatValue(value, result.kpi, true)));
+        svgNode("text", {x: 68, y: y + 4, "text-anchor": "end"}, T.formatValue(value, result.kpi, true)));
     }
     if (block.chartKind === "line") {
       let path = "", connected = false;
@@ -531,6 +580,16 @@
         svg.append(svgNode("text", {x, y: 201, "text-anchor": "middle"}, point.label));
       }
     });
+    if (target) {
+      const path = series.length === 1 ? `M77 ${yAt(target.series[0])}H628` :
+        target.series.map((value, index) => `${index ? "L" : "M"}${xAt(index)} ${yAt(value)}`).join(" ");
+      svg.append(svgNode("path", {d: path, fill: "none", stroke: "#c37b17", "stroke-width": 2.5, "stroke-dasharray": "8 5", "stroke-linejoin": "round"}));
+      target.series.forEach((value, index) => {
+        const mark = svgNode("circle", {cx: xAt(index), cy: yAt(value), r: 3, fill: "#fff", stroke: "#c37b17", "stroke-width": 1.5});
+        mark.append(svgNode("title", {}, `${series[index].label} · Objectif : ${T.formatValue(value, result.kpi)} · ${K.rangeLabel(series[index])}`));
+        svg.append(mark);
+      });
+    }
     return svg;
   }
 
@@ -579,15 +638,45 @@
     canvas.querySelector(".drop-cell")?.focus({preventScroll: true});
   }
 
+  function focusInspector(field) {
+    const node = typeof field === "string" ? $(field) : field;
+    if (!node) return;
+    for (let section = node.closest("details"); section; section = section.parentElement?.closest("details")) section.open = true;
+    node.focus({preventScroll: true});
+    node.scrollIntoView({block: "nearest"});
+  }
+
+  function inspectorSection(inspector, key, title, openByDefault = false) {
+    const stateKey = inspector.dataset.blockKey;
+    if (!inspectorSections.has(stateKey)) inspectorSections.set(stateKey, {});
+    const state = inspectorSections.get(stateKey);
+    const section = el("details", "inspector-section");
+    section.dataset.section = key;
+    section.open = state[key] ?? openByDefault;
+    section.append(el("summary", "", title));
+    const content = el("div", "inspector-section-content");
+    section.append(content);
+    section.addEventListener("toggle", () => {
+      if (section.isConnected) { state[key] = section.open; resizeFrame(); }
+    });
+    inspector.append(section);
+    return content;
+  }
+
   function renderInspector() {
     const inspector = $("inspector");
+    const previous = inspectorSections.get(inspector.dataset.blockKey);
+    if (previous) for (const section of inspector.querySelectorAll("details[data-section]")) previous[section.dataset.section] = section.open;
     inspector.replaceChildren();
     const block = blockById(selectedId);
+    inspector.dataset.blockKey = block ? `${draftBoard.id}:${block.id}` : "";
     if (!block) {
       inspector.append(el("h3", "", "À vous de composer"), el("p", "hint", "Après le dépôt, sélectionnez un bloc pour modifier son contenu et sa largeur."));
       return;
     }
     inspector.append(el("h3", "", `Réglages · ${definitions[block.type].label}`));
+    const metric = ["chart", "card"].includes(block.type);
+    const content = inspectorSection(inspector, "content", "Contenu", !metric);
     const contentLabel = el("label", "field-label", block.type === "chart" ? "Nom du graphique" : block.type === "card" ? "Nom de la carte" : "Contenu");
     contentLabel.htmlFor = "block-content";
     const input = el(block.type === "text" ? "textarea" : "input", "field");
@@ -599,8 +688,9 @@
       block.content = input.value;
       renderCanvas();
     });
-    inspector.append(contentLabel, input);
-    if (["chart", "card"].includes(block.type)) {
+    content.append(contentLabel, input);
+    if (metric) {
+      const data = inspectorSection(inspector, "data", "Données et période", true);
       const label = el("label", "field-label", "KPI à afficher");
       label.htmlFor = "block-kpi";
       const select = el("select", "field");
@@ -618,10 +708,13 @@
       select.value = K.definition(block.kpiId).id;
       select.addEventListener("change", () => {
         const previous = K.definition(block.kpiId);
+        const hadTarget = T.hasValue({...block.target, mode: "monthly"}) || T.hasValue({...block.target, mode: "simple"});
         block.kpiId = select.value;
+        block.target = T.normalize({period: block.target?.period}, block.kpiId);
         if (!block.content || block.content === previous.label) block.content = K.definition(block.kpiId).label;
         renderCanvas(); renderInspector();
-        $("block-kpi").focus({preventScroll: true});
+        if (hadTarget) notify("Objectif réinitialisé : renseignez la cible du nouveau KPI.");
+        focusInspector("block-kpi");
       });
       const periodLabel = el("label", "field-label", "Période du bloc");
       periodLabel.htmlFor = "block-period";
@@ -631,16 +724,18 @@
       period.addEventListener("change", () => {
         block.period = period.value;
         renderCanvas(); renderInspector();
-        $("block-period").focus({preventScroll: true});
+        focusInspector("block-period");
       });
       const result = metricResult(block);
       const info = el("div", "kpi-info");
       info.append(el("strong", "", `Source : ${result.table.label}`),
         el("p", "", result.kpi.formula), el("p", "", K.rangeLabel(result.range)));
       const inspect = button("Voir les données", "button small", () => openBlockData(block, inspect), "table");
-      inspector.append(label, select, periodLabel, period, info, inspect);
+      data.append(label, select, periodLabel, period, info, inspect);
+      renderTargetSettings(inspectorSection(inspector, "target", "Objectif"), block, result);
     }
     if (block.type === "chart") {
+      const presentation = inspectorSection(inspector, "presentation", "Présentation");
       const label = el("label", "field-label", "Présentation");
       label.htmlFor = "chart-kind";
       const select = el("select", "field");
@@ -652,9 +747,10 @@
       }
       select.value = block.chartKind;
       select.addEventListener("change", () => { block.chartKind = select.value; renderCanvas(); });
-      inspector.append(label, select);
+      presentation.append(label, select);
     }
-    inspector.append(el("div", "field-label", "Largeur du bloc · colonnes"));
+    const layout = inspectorSection(inspector, "layout", "Disposition");
+    layout.append(el("div", "field-label", "Largeur du bloc · colonnes"));
     const widths = el("div", "width-controls");
     widths.setAttribute("role", "group");
     widths.setAttribute("aria-label", "Largeur en colonnes");
@@ -666,7 +762,7 @@
         renderCanvas();
         renderInspector();
         notify(`Largeur : ${span} colonne${span > 1 ? "s" : ""}.`);
-        $("inspector").querySelector(`[data-span="${span}"]`).focus();
+        focusInspector($("inspector").querySelector(`[data-span="${span}"]`));
       });
       choice.dataset.span = span;
       choice.disabled = span > free;
@@ -676,7 +772,7 @@
       choice.title = span > free ? "Pas assez de place à droite sur cette ligne" : `Occuper ${span} colonne(s)`;
       widths.append(choice);
     }
-    inspector.append(widths, el("p", "width-help", `Ligne ${block.row + 1} · Colonne ${block.col + 1}. Jusqu’à ${free} colonne(s) disponibles à cet emplacement.`));
+    layout.append(widths, el("p", "width-help", `Ligne ${block.row + 1} · Colonne ${block.col + 1}. Jusqu’à ${free} colonne(s) disponibles à cet emplacement.`));
     const actions = el("div", "block-actions");
     actions.append(button("Déplacer", "button small", () => arm({id: block.id}), "move"),
       button("Supprimer", "button small danger", () => {
@@ -685,7 +781,155 @@
         renderCanvas(); renderPalette(); renderInspector();
         notify("Bloc supprimé. Annuler permet de revenir à la version enregistrée.");
       }, "trash"));
-    inspector.append(actions);
+    layout.append(actions);
+  }
+
+  function renderTargetSettings(inspector, block, result) {
+    const target = block.target || T.normalize(null, result.kpi);
+    block.target = target;
+    const settings = el("div", "target-settings");
+    const year = Number(dataModel.referenceDate.slice(0, 4));
+    const additive = result.kpi.targetMode === "prorata";
+    const units = {money: "€ HT", integer: "nombre", percent: "%", rating: "note / 5", hours: "heures"};
+    const tabs = el("div", "target-tabs");
+    tabs.setAttribute("role", "tablist"); tabs.setAttribute("aria-label", "Mode de calcul de l’objectif");
+    const panels = {}, tabButtons = {}, modes = [["simple", "Simple"], ["monthly", "Avancé"]];
+    modes.forEach(([mode, text], index) => {
+      const tab = button(text, "target-tab", () => switchMode(mode));
+      tab.id = `target-tab-${mode}`;
+      tab.setAttribute("role", "tab"); tab.setAttribute("aria-controls", `target-panel-${mode}`);
+      tab.addEventListener("keydown", (event) => {
+        let next;
+        if (event.key === "ArrowRight" || event.key === "ArrowLeft") next = 1 - index;
+        if (event.key === "Home") next = 0;
+        if (event.key === "End") next = modes.length - 1;
+        if (next === undefined) return;
+        event.preventDefault(); switchMode(modes[next][0]);
+      });
+      const panel = el("div", "target-panel"); panel.id = `target-panel-${mode}`;
+      panel.setAttribute("role", "tabpanel"); panel.setAttribute("aria-labelledby", tab.id);
+      tabs.append(tab); tabButtons[mode] = tab; panels[mode] = panel;
+    });
+    const modeHelp = el("p", "width-help", "L’onglet sélectionné définit le mode de calcul actif. Vos saisies sont conservées quand vous changez de mode.");
+
+    function decimalInput(id) {
+      const field = el("input", "field");
+      field.id = id; field.type = "text"; field.inputMode = "decimal"; field.maxLength = 32;
+      field.autocomplete = "off";
+      field.setAttribute("aria-describedby", "block-target-error block-target-preview");
+      return field;
+    }
+    const label = el("label", "field-label", `Valeur de l’objectif (${units[result.kpi.format]})`);
+    label.htmlFor = "block-target-value";
+    const input = decimalInput("block-target-value");
+    input.placeholder = "Sans objectif";
+    const error = el("p", "target-error"); error.id = "block-target-error"; error.setAttribute("role", "alert");
+    const periodLabel = el("label", "field-label", "Période de l’objectif");
+    periodLabel.htmlFor = "block-target-period";
+    const select = el("select", "field"); select.id = "block-target-period";
+    for (const item of T.PERIODS) {
+      const option = el("option", "", item.label); option.value = item.id; select.append(option);
+    }
+    select.value = target.period;
+    panels.simple.append(label, input, periodLabel, select,
+      el("p", "width-help", additive ? "La base est mensuelle par défaut. Un montant annuel est divisé par 12, semestriel par 6 et trimestriel par 3 pour obtenir la base mensuelle." : "La période indique l’horizon de votre cible. Ce KPI garde un seuil fixe, sans multiplication par le nombre de mois."));
+
+    const monthlyHelp = el("p", "width-help", `Objectifs de janvier à décembre, reconduits chaque année. Renseignez les 12 mois${additive ? " (0 pour un mois sans objectif)" : ""}, ou laissez-les tous vides pour ne pas afficher d’objectif.`);
+    monthlyHelp.id = "block-target-monthly-help";
+    const monthlyUnit = el("p", "field-label", `Chaque mois en ${units[result.kpi.format]}`);
+    const monthGrid = el("div", "target-month-grid"), monthInputs = [];
+    T.MONTHS.forEach((month, index) => {
+      const cell = el("div", "target-month-field");
+      const monthLabel = el("label", "field-label", month);
+      const field = decimalInput(`block-target-month-${index}`);
+      field.placeholder = "À renseigner";
+      field.setAttribute("aria-describedby", "block-target-monthly-help block-target-error block-target-preview");
+      monthLabel.htmlFor = field.id;
+      field.addEventListener("input", () => {
+        target.monthlyValues[index] = field.value;
+        update(); renderCanvas();
+      });
+      cell.append(monthLabel, field); monthGrid.append(cell); monthInputs.push(field);
+    });
+    const copySimple = button("Reprendre l’objectif simple", "button small", () => {
+      target.monthlyValues = T.monthlyDefaults(target, result.kpi, year);
+      syncInputs(); update(); renderCanvas();
+      focusInspector(monthInputs[0]);
+    });
+    panels.monthly.append(monthlyHelp, monthlyUnit, monthGrid, copySimple);
+
+    const directionLabel = el("label", "field-label", "Sens de l’objectif");
+    directionLabel.htmlFor = "block-target-direction";
+    const direction = el("select", "field"); direction.id = "block-target-direction";
+    for (const [id, text] of [["at_least", "Minimum à atteindre"], ["at_most", "Plafond à respecter"]]) {
+      const option = el("option", "", text); option.value = id; direction.append(option);
+    }
+    direction.value = target.direction;
+    const preview = el("p", "target-preview"); preview.id = "block-target-preview"; preview.setAttribute("aria-live", "polite");
+    const projection = el("p", "target-projection");
+    const help = el("p", "width-help", T.policyText(result.kpi));
+
+    function syncInputs() {
+      const display = (value) => value == null ? "" : String(value).replace(".", ",");
+      input.value = display(target.value);
+      monthInputs.forEach((field, index) => { field.value = display(target.monthlyValues[index]); });
+    }
+    function syncMode() {
+      for (const [mode] of modes) {
+        const active = mode === target.mode;
+        tabButtons[mode].classList.toggle("active", active);
+        tabButtons[mode].setAttribute("aria-selected", String(active));
+        tabButtons[mode].tabIndex = active ? 0 : -1;
+        panels[mode].hidden = !active;
+      }
+    }
+    function switchMode(mode) {
+      if (mode === "monthly" && !T.hasValue({...target, mode})) {
+        target.monthlyValues = T.monthlyDefaults(target, result.kpi, year);
+      }
+      target.mode = mode;
+      syncInputs(); syncMode(); update(); renderCanvas();
+      focusInspector(tabButtons[mode]);
+    }
+    function update() {
+      const message = T.validationError(target, result.kpi);
+      error.textContent = message; error.hidden = !message;
+      input.setAttribute("aria-invalid", String(target.mode === "simple" && Boolean(message)));
+      const needsMonths = target.mode === "monthly" && T.hasValue(target);
+      monthInputs.forEach((field, index) => {
+        const value = target.monthlyValues[index];
+        field.setAttribute("aria-invalid", String(needsMonths && (T.parseValue(value) === null || Boolean(T.valueError(value, result.kpi)))));
+      });
+      const simple = {...target, mode: "simple"};
+      copySimple.disabled = !T.hasValue(simple) || Boolean(T.validationError(simple, result.kpi));
+      copySimple.title = copySimple.disabled ? "Renseignez d’abord une valeur valide dans l’onglet Simple." : "Remplacer les 12 valeurs par la répartition de l’objectif simple.";
+      const comparison = T.evaluate(target, result);
+      preview.textContent = message ? "Complétez ou corrigez les valeurs pour afficher l’objectif." : comparison ?
+        `Objectif du rapport : ${T.formatValue(comparison.value, result.kpi)}. ${K.rangeLabel(result.range)}. ${T.description(comparison, result.kpi)}.` :
+        "Aucun objectif pour ce bloc.";
+      projection.hidden = !comparison;
+      if (comparison) {
+        const spec = T.periodDefinition(target.period);
+        if (additive && target.mode === "simple" && spec.months) {
+          const monthly = comparison.target.value / spec.months;
+          projection.textContent = `Base mensuelle : ${T.formatValue(monthly, result.kpi)}. Sur 6 mois complets : ${T.formatValue(monthly * 6, result.kpi)}. Sur 12 mois complets : ${T.formatValue(monthly * 12, result.kpi)}.`;
+        } else {
+          const annual = T.valueForRange(comparison.target, result.kpi, {start: `${year}-01-01`, end: `${year}-12-31`});
+          projection.textContent = `${additive ? "Objectif annuel complet" : target.mode === "monthly" ? `Cible moyenne annuelle (${year})` : "Cible fixe"} : ${T.formatValue(annual, result.kpi)}.`;
+        }
+      }
+    }
+    input.addEventListener("input", () => { target.value = input.value; update(); renderCanvas(); });
+    select.addEventListener("change", () => { target.period = select.value; update(); renderCanvas(); });
+    direction.addEventListener("change", () => { target.direction = direction.value; update(); renderCanvas(); });
+    const clear = button("Retirer l’objectif", "button small", () => {
+      target.value = null; target.monthlyValues = T.MONTHS.map(() => null);
+      syncInputs(); update(); renderCanvas();
+      focusInspector(target.mode === "monthly" ? monthInputs[0] : input);
+    });
+    settings.append(tabs, modeHelp, panels.simple, panels.monthly, error, directionLabel, direction, projection, preview, help, clear);
+    inspector.append(settings);
+    syncInputs(); syncMode(); update();
   }
 
   function openBlockData(block, trigger) {
@@ -838,7 +1082,7 @@
     rows = Math.min(L.MAX_ROWS, Math.max(rows, row + 2));
     renderCanvas(); renderPalette(); renderInspector();
     notify(`Bloc ${existing ? "déplacé" : "ajouté"}, ligne ${row + 1}, colonne ${col + 1}.${position.span < wanted ? ` Largeur ajustée à ${position.span} colonne(s), selon la place disponible.` : ""}`);
-    $("block-content").focus({preventScroll: true});
+    focusInspector("block-content");
   }
 
   function attachDrag(node, payload) {
@@ -908,6 +1152,7 @@
   });
   canvas.addEventListener("pointerleave", () => { if (!dragging) clearPreview(); });
   document.addEventListener("keydown", (event) => {
+    if (catalogueMode) return;
     if (event.key === "Escape" && detail) {
       event.preventDefault();
       closeDataPanel();
@@ -978,6 +1223,14 @@
   function initialize(args) {
     if (initialized) return;
     initialized = true;
+    if (args.page === "catalogue") {
+      catalogueMode = true;
+      root.hidden = true;
+      $("catalogue").hidden = false;
+      document.title = "Catalogue KPI · KPI-Card";
+      window.KPICatalogue.mount($("catalogue"), dataModel, {dialect: args.sql_dialect});
+      return;
+    }
     storageKey = args.storage_key || "kpi-card:dashboards:v2";
     let stored = null, storageError = false;
     let legacy = L.normalize(args.legacy), hasCurrentStorage = false;
@@ -1016,6 +1269,7 @@
     resizeFrame();
   });
   new ResizeObserver(resizeFrame).observe(root);
+  new ResizeObserver(resizeFrame).observe($("catalogue"));
   send("streamlit:componentReady", {apiVersion: 1});
   if (window.parent === window) initialize({});
 })();

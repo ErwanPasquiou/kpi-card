@@ -17,7 +17,7 @@ button { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
 button, input, textarea, select { -webkit-tap-highlight-color: transparent; }
 button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible,
-.block:focus-visible { outline: 3px solid #38bddd; outline-offset: 3px; }
+.block:focus-visible, summary:focus-visible { outline: 3px solid #38bddd; outline-offset: 3px; }
 [hidden] { display: none !important; }
 svg { display: block; }
 .icon { width: 18px; height: 18px; flex-shrink: 0; }
@@ -98,6 +98,15 @@ h2, h3, p { margin: 0; }
 .placement-hint { font-size: 11px; line-height: 1.6; color: #176992; background: #eaf5fb; border-radius: 6px; margin-top: 12px; padding: 10px; }
 .inspector { margin-top: 22px; padding-top: 21px; border-top: 1px solid #e6edf2; }
 .inspector h3 { font-size: 13px; font-weight: 650; margin-bottom: 14px; }
+.inspector-section { margin-top: 8px; border: 1px solid #dfe8ee; border-radius: 8px; min-width: 0; }
+.inspector-section > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; list-style: none; cursor: pointer; padding: 12px 11px; color: #365c77; font-size: 12px; font-weight: 650; border-radius: 8px; background: #f7fafc; }
+.inspector-section > summary::-webkit-details-marker { display: none; }
+.inspector-section > summary::after { content: ""; flex-shrink: 0; width: 7px; height: 7px; border-right: 1.5px solid #7392a7; border-bottom: 1.5px solid #7392a7; transform: translateY(-2px) rotate(45deg); margin-right: 2px; }
+.inspector-section > summary:hover { background: #edf6fb; }
+.inspector-section[open] > summary { border-radius: 8px 8px 0 0; border-bottom: 1px solid #e4edf2; color: #176c96; }
+.inspector-section[open] > summary::after { transform: translateY(2px) rotate(225deg); }
+.inspector-section-content { min-width: 0; padding: 12px 10px; }
+.inspector-section-content > .field-label:first-child { margin-top: 0; }
 .field-label { display: block; margin: 14px 0 8px; font-size: 11px; font-weight: 650; color: #547086; }
 .field { width: 100%; border: 1px solid #d6e2ea; border-radius: 7px; padding: 10px; color: var(--ink); background: #fff; font-size: 12px; line-height: 1.5; }
 textarea.field { resize: vertical; min-height: 100px; }
@@ -204,6 +213,47 @@ textarea.field { resize: vertical; min-height: 100px; }
 .kpi-info { background: #f4f8fb; border: 1px solid #e7eef3; border-radius: 7px; padding: 11px; font-size: 10px; color: #6b8394; line-height: 1.6; margin: 12px 0; }
 .kpi-info strong { display: block; color: #45677e; }
 .kpi-info p { margin-top: 5px; }
+
+/* Objectifs ajustés à la période du bloc et comparaison au réalisé. */
+.target-settings { min-width: 0; }
+.target-settings .field-label { line-height: 1.5; }
+.target-settings .button { width: 100%; margin-top: 11px; }
+.target-settings .button:disabled { opacity: .5; }
+.target-settings [aria-invalid="true"] { border-color: #b34f4b; background: #fff8f7; }
+.target-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; padding: 3px; border: 1px solid #dce7ee; border-radius: 8px; background: #eff5f9; }
+.target-tab { min-width: 0; padding: 8px 5px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: #668498; font-size: 11px; font-weight: 650; }
+.target-tab:hover { color: #167bb0; }
+.target-tab.active { color: #176c96; border-color: #d8e6ef; background: #fff; box-shadow: 0 1px 4px #073a5610; }
+.target-panel { min-width: 0; }
+.target-month-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px 8px; }
+.target-month-field { min-width: 0; }
+.target-month-field .field-label { margin: 0 0 5px; font-size: 10px; }
+.target-month-field .field { min-width: 0; padding: 8px 6px; font-size: 11px; font-variant-numeric: tabular-nums; }
+.target-projection { margin-top: 12px; font-size: 10px; line-height: 1.7; color: #4d718a; }
+.target-error { color: #aa4541; font-size: 10px; line-height: 1.6; margin-top: 7px; }
+.target-preview { font-size: 10px; color: #53768e; background: #eef6fb; padding: 9px; border-radius: 6px; line-height: 1.7; margin-top: 10px; }
+.target-summary { --target-status: #698194; border-top: 1px solid #e7eef3; margin-top: 18px; padding-top: 14px; }
+.target-summary.target-met { --target-status: #23826e; }
+.target-summary.target-missed { --target-status: #b1534e; }
+.target-summary-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px 10px; color: #77909f; font-size: 10px; line-height: 1.5; }
+.target-summary-heading strong { color: #4e6f86; font-size: 12px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.target-variation { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; margin-top: 8px; line-height: 1.5; }
+.target-delta { color: var(--target-status); font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.target-relative { color: var(--target-status); font-size: 11px; font-weight: 600; }
+.target-variation-label { color: #8da1af; font-size: 9px; }
+.target-status { color: var(--target-status); font-size: 10px; margin-top: 3px; font-weight: 600; }
+.target-progress { height: 5px; border-radius: 4px; overflow: hidden; background: #edf2f5; margin-top: 13px; }
+.target-progress > span { display: block; height: 100%; background: var(--target-status); border-radius: inherit; }
+.target-ratio { font-size: 10px; color: #7d94a4; margin-top: 5px; line-height: 1.6; }
+.target-basis, .target-note { color: #8a9eac; font-size: 9px; line-height: 1.65; margin-top: 7px; }
+.target-compact { margin-top: 12px; padding-top: 10px; }
+.target-compact .target-variation { margin-top: 5px; }
+.target-compact .target-delta { font-size: 12px; }
+.target-compact .target-status { font-size: 9px; }
+.chart-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 9px; color: #6b879a; font-size: 10px; }
+.chart-legend > span { display: inline-flex; align-items: center; gap: 7px; line-height: 1.6; }
+.chart-legend > span::before { content: ""; display: inline-block; width: 21px; border-top: 3px solid #247db0; }
+.chart-legend .legend-target::before { border-top: 2px dashed #c37b17; }
 
 /* Consultation des données dans l'iframe, avec pagination et export complet. */
 .data-open > .editor-toolbar, .data-open > #breadcrumb, .data-open > #hub,

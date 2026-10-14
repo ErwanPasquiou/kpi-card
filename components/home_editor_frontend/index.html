@@ -4,11 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>KPI-Card · Tableaux de bord</title>
-  <link rel="stylesheet" href="editor.css?v=eff4ebb8e65a">
-  <script defer src="data.js?v=67aca740e061"></script>
-  <script defer src="layout.js?v=d862d2a76f64"></script>
+  <link rel="stylesheet" href="editor.css?v=ee0790e42642">
+  <link rel="stylesheet" href="catalogue.css?v=71b32b77c2ef">
+  <script defer src="data.js?v=a39afbeeae4e"></script>
+  <script defer src="targets.js?v=8cccc5ee0871"></script>
+  <script defer src="layout.js?v=3e563ec02725"></script>
   <script defer src="dashboards.js?v=9ff723197bb8"></script>
-  <script defer src="editor.js?v=0fdae19f6beb"></script>
+  <script defer src="catalogue-model.js?v=fe5abdbd9365"></script>
+  <script defer src="catalogue.js?v=f2052cf3c30f"></script>
+  <script defer src="editor.js?v=3b8afc7440ca"></script>
 </head>
 <body>
   <main id="editor" class="editor" aria-label="Vos tableaux de bord KPI-Card">
@@ -99,5 +103,6 @@
     </section>
     <div id="status" class="status" role="status" aria-live="polite"></div>
   </main>
+  <main id="catalogue" class="editor catalogue" aria-label="Catalogue KPI" hidden></main>
 </body>
 </html>

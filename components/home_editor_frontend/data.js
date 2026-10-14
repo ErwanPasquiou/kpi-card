@@ -6,6 +6,7 @@
     {id: "rolling12", label: "12 mois glissants"},
     {id: "currentYear", label: "Année en cours"},
     {id: "months6", label: "6 mois"},
+    {id: "months3", label: "3 mois"},
     {id: "month1", label: "1 mois"},
     {id: "week1", label: "1 semaine"},
   ];
@@ -31,7 +32,7 @@
     let start;
     if (id === "currentYear") start = `${end.slice(0, 4)}-01-01`;
     else if (id === "week1") start = addDays(end, -6);
-    else start = addDays(shiftMonths(end, -({rolling12: 12, months6: 6, month1: 1}[id])), 1);
+    else start = addDays(shiftMonths(end, -({rolling12: 12, months6: 6, months3: 3, month1: 1}[id])), 1);
     return {start, end, period: id, label: PERIODS.find((item) => item.id === id).label};
   }
   const formatDate = (iso) => dateValue(iso).toLocaleDateString("fr-FR", {timeZone: "UTC"});
@@ -87,7 +88,10 @@
       formula: "Somme des délais de réponse en heures ÷ nombre de retours.", calculate: (rows) => mean(rows, "delai_reponse_heures")},
     {id: "feedback_count", label: "Retours clients recueillis", table: "feedback", format: "integer", filter: all,
       formula: "Nombre de retours clients reçus.", calculate: (rows) => rows.length},
-  ];
+  ].map((kpi) => ({...kpi,
+    targetMode: ["revenue", "sales_count", "operations_count", "delivered_count", "feedback_count"].includes(kpi.id) ? "prorata" : "fixed",
+    targetDirection: kpi.id === "response_time" ? "at_most" : "at_least",
+  }));
   const definition = (id) => KPIS.find((item) => item.id === id) || KPIS[0];
   const tableDefinition = (id) => TABLES.find((item) => item.id === id) || TABLES[0];
   const isKpi = (id) => KPIS.some((item) => item.id === id);
@@ -186,7 +190,8 @@
     return "\uFEFF" + [table.columns.map((column) => cell(column.label)).join(";"),
       ...rows.map((row) => table.columns.map((column) => cell(row[column.key])).join(";"))].join("\r\n") + "\r\n";
   }
-  const api = {PERIODS, TABLES, KPIS, today, bounds, rangeLabel, formatDate, validPeriod, isKpi, definition, formatValue, createModel, toCsv};
+  const api = {PERIODS, TABLES, KPIS, today, bounds, rangeLabel, formatDate, validPeriod, isKpi, definition, formatValue, createModel, toCsv,
+    calculationHelpers: {sum, mean, percent}};
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.KPIData = api;
 })(globalThis);

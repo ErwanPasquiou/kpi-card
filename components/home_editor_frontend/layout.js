@@ -2,6 +2,7 @@
 (function (root) {
   "use strict";
   const K = typeof module !== "undefined" && module.exports ? require("./data.js") : root.KPIData;
+  const T = typeof module !== "undefined" && module.exports ? require("./targets.js") : root.KPITargets;
   const COLS = 6;
   const MAX_ROWS = 100;
   const TYPES = ["text", "title", "chart", "card"];
@@ -63,6 +64,7 @@
         ...(["chart", "card"].includes(raw.type) ? {
           kpiId: K.isKpi(raw.kpiId) ? raw.kpiId : LEGACY_KPIS[raw.id] || "revenue",
           period: K.validPeriod(raw.period) ? raw.period : "inherit",
+          target: T.normalize(raw.target, K.isKpi(raw.kpiId) ? raw.kpiId : LEGACY_KPIS[raw.id] || "revenue"),
         } : {}),
       });
     }
