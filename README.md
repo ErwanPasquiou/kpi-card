@@ -3,7 +3,8 @@
 **Composer, consulter et documenter ses tableaux de bord KPI dans une interface commune.**
 
 KPI-Card est une application Streamlit en français. Son accueil rassemble des tableaux
-de bord personnalisables, composés de textes, titres, graphiques et cartes de chiffres clés.
+de bord personnalisables, composés de textes et titres, graphiques, cartes de chiffres clés,
+séparateurs, tableaux manuels et encadrés.
 Un catalogue explique la définition métier et technique des indicateurs.
 
 > **État actuel : POC local avec données fictives.** L'éditeur, les objectifs et le
@@ -34,7 +35,9 @@ traitée dans Databricks ; le POC actuel sert à construire l'expérience utilis
 | Exemples | Quatre modèles : Vue d'ensemble, Performance commerciale, Suivi des projets, Satisfaction client. |
 | Favoris | Ajout/retrait d'un favori et filtre des tableaux favoris. |
 | Éditeur | Mode édition, panneau latéral, grille de six colonnes, ajout et déplacement par glisser-déposer ou par clic. |
-| Blocs | Texte, Titre, Graphique et Carte ; largeur de une à six colonnes selon la place disponible. |
+| Blocs | Texte (Titre 1, Titre 2 ou paragraphe), Graphique, Carte, Séparateur, Tableau manuel et Encadré ; largeur de une à six colonnes selon la place disponible. |
+| Composition | Alignement du texte, séparateurs configurables, encadrés information/vigilance/décision et duplication indépendante des blocs. |
+| Tableau manuel | En-têtes et cellules éditables ; ajout/suppression de lignes et colonnes, jusqu’à 20 lignes et 6 colonnes. |
 | Paramétrage | Rubriques repliables : Contenu, Données et période, Objectif, Présentation et Disposition, selon le bloc. |
 | Graphiques | Barres ou courbes ; choix du KPI ; période héritée du tableau ou spécifique au bloc. |
 | Objectifs | Mode simple et mode avancé avec douze valeurs mensuelles ; minimum à atteindre ou plafond à respecter. |
@@ -148,6 +151,7 @@ le port utilisé et les URL des fichiers avant de modifier le composant.
         ├── editor.js             # Hub, édition, réglages, données brutes
         ├── editor.css            # Styles du hub et de l'éditeur
         ├── layout.js             # Grille, placement et normalisation des blocs
+        ├── content-blocks.js     # Textes, séparateurs, tableaux manuels et encadrés
         ├── dashboards.js         # Collection, exemples et migrations
         ├── data.js               # Sources fictives, KPI, périodes et CSV
         ├── targets.js            # Objectifs, prorata, comparaison et formatage
@@ -201,6 +205,15 @@ Les indices de position commencent à zéro. Un bloc KPI contient aussi `kpiId`,
 enregistrer ou annuler un tableau inclut ses objectifs. La collection est en
 version 2 ; la disposition interne `layout` est en version 1. Toute évolution du
 format doit prévoir la reprise des sauvegardes existantes.
+
+Les anciens blocs `title` sont repris en `text` avec `textStyle: "heading1"`,
+sans changer leur contenu ni leur emplacement. Les champs éditoriaux sont optionnels :
+`textStyle` et `align` pour les textes, `lineStyle` et `spacing` pour les séparateurs,
+`table: {columns, rows}` pour les tableaux manuels, `tone` et `heading` pour les encadrés.
+La collection reste en version 2 et la disposition en version 1. Le nouveau lecteur
+accepte les anciens formats ; une ancienne version de l'application ne sait pas lire
+les nouveaux types de blocs. Ne pas alterner anciennes et nouvelles versions sur
+la même sauvegarde. Aucun contenu personnalisé existant n'est remplacé par un modèle.
 
 ## Cible de production Databricks
 
@@ -296,7 +309,7 @@ de développement appropriés. Conserver les identifiants hors du dépôt.
 Tu travailles sur KPI-Card, un POC Streamlit destiné à Databricks Apps.
 Lis README.md et components/home_editor_frontend/README.md avant de modifier le projet.
 Le frontend est en HTML/CSS/JavaScript natif, sans build npm.
-Préserve le hub, les quatre types de blocs, la grille de six colonnes, les favoris,
+Préserve le hub, tous les types de blocs, la grille de six colonnes, les favoris,
 les objectifs simples et mensuels avancés, le catalogue KPI et les exports CSV.
 La sauvegarde actuelle est locale ; l'identité, le partage et le stockage Databricks
 sont des évolutions à réaliser, pas des fonctionnalités déjà présentes.
@@ -334,8 +347,15 @@ effectivement réalisées. N'annonce pas un accès ou un déploiement qui n'a pa
 ## Vérifications et limites
 
 Les commandes de démarrage ci-dessus sont des instructions de mise en route.
-La rédaction de ce README n'a pas inclus de lancement de l'application, de tests
-automatisés ni de benchmark Databricks. Aucun pipeline CI n'est fourni ici.
+Le dépôt fournit des tests ciblés des blocs et de leur compatibilité. Depuis la
+racine, avec une version récente de Node.js (20 ou supérieure), exécuter :
+
+```bash
+node --test tests/content-blocks.test.cjs
+```
+
+Node.js sert uniquement à ces tests : il n'est pas nécessaire au lancement de l'application.
+Aucun pipeline CI ni benchmark Databricks n'est fourni ici.
 
 Lors d'une tâche de validation, couvrir notamment : création/édition/annulation,
 collisions de blocs, rechargement des sauvegardes, objectifs nuls ou invalides,

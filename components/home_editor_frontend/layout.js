@@ -3,9 +3,11 @@
   "use strict";
   const K = typeof module !== "undefined" && module.exports ? require("./data.js") : root.KPIData;
   const T = typeof module !== "undefined" && module.exports ? require("./targets.js") : root.KPITargets;
+  const B = typeof module !== "undefined" && module.exports ? require("./content-blocks.js") : root.ContentBlocks;
   const COLS = 6;
   const MAX_ROWS = 100;
-  const TYPES = ["text", "title", "chart", "card"];
+  // "title" reste accepté en entrée ; normalisé en texte de niveau 1.
+  const TYPES = ["text", "title", "chart", "card", "separator", "table", "callout"];
   const LEGACY_KPIS = {
     "overview-chart": "delivered_count", "sales-revenue": "revenue", "sales-wins": "sales_count",
     "projects-deliveries": "delivered_count", "customers-satisfaction": "satisfaction", "customers-feedback": "feedback_count",
@@ -56,9 +58,12 @@
       ids.add(raw.id);
       const chartData = raw.type === "chart" ? normalizeChart(raw.chartData) : undefined;
       if (raw.type === "chart" && !chartData) return null;
+      const editorial = B.normalize(raw);
+      if (!editorial) return null;
       blocks.push({
-        id: raw.id, type: raw.type, row: raw.row, col: raw.col, span: raw.span,
+        id: raw.id, type: raw.type === "title" ? "text" : raw.type, row: raw.row, col: raw.col, span: raw.span,
         content: String(raw.content ?? "").slice(0, 5000),
+        ...editorial,
         chartKind: raw.chartKind === "line" ? "line" : "bar",
         ...(chartData ? {chartData} : {}),
         ...(["chart", "card"].includes(raw.type) ? {
@@ -71,7 +76,18 @@
     return {version: 1, blocks};
   }
 
-  const api = {COLS, MAX_ROWS, TYPES, DEFAULT_CHART, normalizeChart, availableSpan, placement, normalize};
+  // Chercher une place après le bloc, puis avant lui, sans réduire sa largeur.
+  function duplicatePlacement(blocks, block) {
+    const start = block.row * COLS + block.col + block.span;
+    for (let offset = 0; offset < COLS * MAX_ROWS; offset++) {
+      const cell = (start + offset) % (COLS * MAX_ROWS);
+      const row = Math.floor(cell / COLS), col = cell % COLS;
+      if (availableSpan(blocks, row, col) >= block.span) return {row, col, span: block.span};
+    }
+    return null;
+  }
+
+  const api = {COLS, MAX_ROWS, TYPES, DEFAULT_CHART, normalizeChart, availableSpan, placement, normalize, duplicatePlacement};
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.HomeLayout = api;
 })(globalThis);

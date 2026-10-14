@@ -95,6 +95,9 @@
         metric("overview-projects", 1, 4, 2, "projects_count"),
         block("overview-chart", "chart", 2, 0, 4, "Opérations livrées", {chartKind: "bar", kpiId: "delivered_count"}),
         block("overview-note", "text", 2, 4, 2, "Le point de la semaine\n\nFinaliser les trois livraisons et préparer la revue des projets du mois prochain."),
+        block("overview-separator", "separator", 3, 0, 6, "De l’analyse à l’action", {lineStyle: "solid", spacing: 24}),
+        block("overview-actions", "table", 4, 0, 4, "Les prochaines étapes"),
+        block("overview-decision", "callout", 4, 4, 2, "Valider ensemble la prochaine étape à partir des indicateurs et du plan d’action.", {tone: "success", heading: "La décision à prendre"}),
       ]),
       board("example-sales", "Performance commerciale", "Chiffre d’affaires, ventes et progression vers les objectifs.", "Commercial", "teal", [
         block("sales-heading", "title", 0, 0, 6, "Garder le cap sur vos objectifs"),

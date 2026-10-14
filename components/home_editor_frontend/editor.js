@@ -5,14 +5,17 @@
   const D = window.Dashboards;
   const K = window.KPIData;
   const T = window.KPITargets;
+  const B = window.ContentBlocks;
   const dataModel = K.createModel();
   const $ = (id) => document.getElementById(id);
   const root = $("editor"), canvas = $("canvas");
   const definitions = {
-    text: {label: "Texte", hint: "Une note, une description", span: 2, content: "Écrivez votre texte ici."},
-    title: {label: "Titre", hint: "Structurez votre page", span: 3, content: "Votre titre"},
+    text: {label: "Texte", hint: "Titre 1, titre 2 ou paragraphe", span: 3, content: "Écrivez votre texte ici."},
     chart: {label: "Graphique", hint: "Un KPI dans le temps", span: 3, content: "Chiffre d’affaires HT"},
     card: {label: "Carte", hint: "Un KPI en un chiffre", span: 2, content: "Chiffre d’affaires HT"},
+    separator: {label: "Séparateur", hint: "Une respiration entre sections", span: 6, content: ""},
+    table: {label: "Tableau", hint: "Un suivi saisi à la main", span: 6, content: "Plan d’action"},
+    callout: {label: "Encadré", hint: "Information, vigilance, décision", span: 3, content: "Présentez ici le message à retenir."},
   };
   const paths = {
     edit: '<path d="m15 4 5 5M4 20l4-1L20 7a2 2 0 0 0-5-5L3 14l-1 6z"/>',
@@ -26,6 +29,9 @@
     plus: '<path d="M12 5v14M5 12h14"/>',
     grip: '<path d="M9 5h.01M15 5h.01M9 12h.01M15 12h.01M9 19h.01M15 19h.01" stroke-width="3"/>',
     move: '<path d="M12 2v20M2 12h20M9 5l3-3 3 3M9 19l3 3 3-3M5 9l-3 3 3 3M19 9l3 3-3 3"/>',
+    separator: '<path d="M3 12h18M7 5h10M7 19h10"/>',
+    callout: '<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 11v6M12 7h.01"/>',
+    copy: '<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V3H3v13h5"/>',
     trash: '<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/>',
     grid: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 3v18M15 3v18M3 12h18"/>',
     back: '<path d="m10 5-7 7 7 7M3 12h18"/>',
@@ -221,11 +227,14 @@
       const mini = el("span", `preview-block preview-${block.type}`);
       mini.style.gridRow = String(block.row - firstRow + 1);
       mini.style.gridColumn = `${block.col + 1} / span ${block.span}`;
-      if (block.type === "title") mini.append(el("span", "preview-title", block.content));
-      if (block.type === "text") {
+      if (block.type === "text" && block.textStyle !== "paragraph") mini.append(el("span", "preview-title", block.content));
+      if (block.type === "text" && block.textStyle === "paragraph") {
         mini.append(el("span", "preview-text", block.content.split("\n")[0]));
         mini.append(el("span", "preview-line"), el("span", "preview-line short"));
       }
+      if (block.type === "separator") mini.append(el("span", "preview-divider"));
+      if (block.type === "table") mini.append(icon("table"), el("span", "preview-text", block.content || "Tableau"));
+      if (block.type === "callout") mini.append(el("span", "preview-callout", block.heading || block.content));
       if (block.type === "chart") {
         const chart = el("span", "preview-bars");
         const values = metricResult(block, board).series.map((point) => point.value || 0);
@@ -406,6 +415,12 @@
 
   function renderCanvas() {
     canvas.replaceChildren();
+    // Seules les lignes exclusivement séparatrices deviennent compactes.
+    // Conserver la hauteur des lignes vides et des compositions existantes.
+    canvas.style.gridTemplateRows = editing ? "" : Array.from({length: lastRow() + 1}, (_, row) => {
+      const items = blocks.filter((block) => block.row === row);
+      return items.length && items.every((block) => block.type === "separator") ? "minmax(0, auto)" : "minmax(90px, auto)";
+    }).join(" ");
     if (!editing && !blocks.length) {
       const empty = el("div", "empty-state");
       const symbol = el("div", "empty-symbol");
@@ -484,8 +499,7 @@
 
   function renderBody(block) {
     const body = el("div", "block-body");
-    if (block.type === "title") body.append(el("h2", block.content ? "" : "block-placeholder", block.content || "Votre titre"));
-    if (block.type === "text") body.append(el("p", block.content ? "body-text" : "body-text block-placeholder", block.content || "Votre texte"));
+    B.render(block, body, el);
     if (["chart", "card"].includes(block.type)) {
       const result = metricResult(block);
       const target = T.evaluate(block.target, result);
@@ -677,18 +691,23 @@
     inspector.append(el("h3", "", `Réglages · ${definitions[block.type].label}`));
     const metric = ["chart", "card"].includes(block.type);
     const content = inspectorSection(inspector, "content", "Contenu", !metric);
-    const contentLabel = el("label", "field-label", block.type === "chart" ? "Nom du graphique" : block.type === "card" ? "Nom de la carte" : "Contenu");
+    const contentLabel = el("label", "field-label", block.type === "chart" ? "Nom du graphique" : block.type === "card" ? "Nom de la carte" :
+      block.type === "table" ? "Titre du tableau" : block.type === "separator" ? "Libellé (facultatif)" : "Contenu");
     contentLabel.htmlFor = "block-content";
-    const input = el(block.type === "text" ? "textarea" : "input", "field");
+    const multiline = ["text", "callout"].includes(block.type);
+    const input = el(multiline ? "textarea" : "input", "field");
     input.id = "block-content";
     input.value = block.content;
     input.maxLength = 5000;
-    if (block.type !== "text") input.type = "text";
+    if (!multiline) input.type = "text";
     input.addEventListener("input", () => {
       block.content = input.value;
       renderCanvas();
     });
     content.append(contentLabel, input);
+    if (!metric) B.settings(block, content, {
+      el, button, changed: renderCanvas, rebuild: renderInspector, focus: focusInspector,
+    });
     if (metric) {
       const data = inspectorSection(inspector, "data", "Données et période", true);
       const label = el("label", "field-label", "KPI à afficher");
@@ -774,6 +793,18 @@
     }
     layout.append(widths, el("p", "width-help", `Ligne ${block.row + 1} · Colonne ${block.col + 1}. Jusqu’à ${free} colonne(s) disponibles à cet emplacement.`));
     const actions = el("div", "block-actions");
+    actions.append(button("Dupliquer", "button small", () => {
+      const position = L.duplicatePlacement(blocks, block);
+      if (!position) return notify("La grille est pleine : aucune place pour cette copie.", true);
+      const copy = {...clone(block), id: crypto.randomUUID(), ...position};
+      blocks.push(copy);
+      rows = Math.min(L.MAX_ROWS, Math.max(rows, copy.row + 2));
+      selectedId = copy.id;
+      pending = dragging = null;
+      renderCanvas(); renderPalette(); renderInspector();
+      focusInspector("block-content");
+      notify("Bloc dupliqué. Vous pouvez modifier sa copie indépendamment.");
+    }, "copy"));
     actions.append(button("Déplacer", "button small", () => arm({id: block.id}), "move"),
       button("Supprimer", "button small danger", () => {
         blocks = blocks.filter((item) => item.id !== block.id);
@@ -1066,7 +1097,7 @@
 
   function place(payload, row, col) {
     if (!editing) return;
-    if (!payload) return notify("Choisissez d’abord Texte, Titre, Graphique ou Carte dans le panneau.");
+    if (!payload) return notify("Choisissez d’abord un type de bloc dans le panneau.");
     const position = targetPlacement(payload, row, col);
     if (!position) return notify("Cet emplacement est occupé. Choisissez une case libre.", true);
     const existing = payload.id ? blockById(payload.id) : null;
@@ -1075,6 +1106,7 @@
     else {
       blocks.push({id: crypto.randomUUID(), type: payload.type, ...position,
         content: definitions[payload.type].content, chartKind: "bar",
+        ...B.normalize({type: payload.type}),
         ...(["chart", "card"].includes(payload.type) ? {kpiId: "revenue", period: "inherit"} : {})});
     }
     selectedId = existing?.id || blocks[blocks.length - 1].id;

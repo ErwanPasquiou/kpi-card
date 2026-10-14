@@ -22,7 +22,7 @@ du navigateur (Streamlit autorise la mise en cache de ces fichiers).
 2. **Nouveau tableau de bord** permet de nommer un tableau et de partir d'une
    page vierge ou de l'un des quatre modèles. Il rejoint la collection après **Enregistrer**.
 3. Dans l'éditeur, modifier le nom, la description et la période par défaut dans le panneau latéral.
-   Glisser **Texte**, **Titre**, **Graphique** ou **Carte** vers une case libre. Il est aussi
+   Glisser **Texte**, **Graphique**, **Carte**, **Séparateur**, **Tableau** ou **Encadré** vers une case libre. Il est aussi
    possible de cliquer sur un type de bloc, puis sur une case (souris, clavier ou tactile).
 4. Sélectionner un bloc pour changer son contenu et sa largeur dans le panneau.
    Les réglages sont regroupés en rubriques repliables : **Contenu**, **Données et
@@ -54,6 +54,44 @@ du navigateur (Streamlit autorise la mise en cache de ces fichiers).
     **Retirer l'objectif** vide les deux modes.
 
 ## Exemples fournis
+
+### Blocs éditoriaux
+
+- **Texte** regroupe les anciens textes et titres. Dans Contenu, choisir **Titre 1**,
+  **Titre 2** ou **Texte**, puis un alignement gauche, centré ou droite. Les retours
+  à la ligne sont conservés ; le HTML saisi reste du texte.
+- **Séparateur** occupe six colonnes par défaut. Son libellé est facultatif ; choisir
+  un trait continu, en tirets ou en pointillés et un espacement compact, normal ou aéré.
+- **Tableau** est un contenu manuel de démonstration, indépendant des tables sources KPI.
+  Modifier son titre, ses en-têtes et ses cellules dans Contenu. Ajouter ou supprimer
+  des colonnes et des lignes ; limites : 1 à 6 colonnes, 1 à 20 lignes, 240 caractères
+  par cellule/en-tête. La suppression agit sur le brouillon ; **Annuler** restaure le
+  dernier tableau de bord enregistré. Aucun calcul, import ou export propre au bloc.
+- **Encadré** met en évidence une information, un point de vigilance ou une décision.
+  Son titre est facultatif. Le libellé d'intention complète la couleur pour rester lisible.
+- **Dupliquer**, dans Disposition, crée une copie indépendante avec la même largeur
+  au prochain emplacement libre (puis recherche depuis le début si nécessaire).
+  Les KPI et objectifs sont également copiés. Une grille pleine affiche un message.
+
+Le modèle **Vue d'ensemble** inclut un séparateur, un plan d'action manuel et un
+encadré de décision. Pour les découvrir avec une collection existante, créer un
+nouveau tableau à partir de ce modèle ; les tableaux enregistrés ne sont pas modifiés.
+
+### Compatibilité
+
+`content-blocks.js` centralise les champs éditoriaux et leurs limites. `layout.js`
+transforme les anciens `type: "title"` en `type: "text", textStyle: "heading1"`.
+Le contenu, la position, la largeur et les autres blocs sont préservés. Un texte
+sans style reçoit `paragraph`. La normalisation est idempotente et refuse les
+tableaux non rectangulaires ou hors limites. Les champs de présentation inconnus
+reviennent à des valeurs sûres ; toutes les saisies sont rendues avec `textContent`.
+
+Les versions restent collection 2 / layout 1 avec champs optionnels. La compatibilité
+est ascendante : un ancien lecteur ne reconnaît pas les nouveaux types. Éviter un
+retour à l'ancien frontend sur la même collection. Les tests sont dans
+`tests/content-blocks.test.cjs` et se lancent avec `node --test tests/content-blocks.test.cjs`.
+
+### Modèles
 
 - Vue d'ensemble : chiffres clés, activité et priorités.
 - Performance commerciale : chiffre d'affaires et ventes conclues.
