@@ -104,6 +104,29 @@ h2, h3, p { margin: 0; }
 .table-edit-actions { margin-top: 14px; }
 .table-remove { background: none; border: 0; color: #a44141; font-size: 10px; padding: 8px 0; text-align: left; }
 .table-remove:disabled { opacity: .45; }
+.live-note .field-label { margin-top: 10px; color: #42667b; }
+.live-note .field { background: #ffffffb8; }
+.live-note-title { font-weight: 650; font-size: 16px; }
+.live-note textarea.live-note-content { min-height: 110px; font-size: 13px; }
+.live-note .table-controls { margin-top: 12px; }
+.live-note button:disabled { opacity: .45; }
+.table-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+.source-table-block { min-width: 0; }
+.source-table-block .table-scroll { margin-top: 12px; max-height: 420px; }
+.source-table-block .raw-table th { padding: 0; }
+.column-trigger { display: block; padding: 12px 15px; width: 100%; text-align: inherit; border: 0; background: transparent; color: #365f7e; font-weight: 650; white-space: nowrap; }
+.column-trigger:hover, .column-trigger[aria-expanded="true"] { background: #dcecf7; }
+.column-panel { border: 1px solid #c5dce9; background: #f5faff; padding: 14px; border-radius: 8px; margin: 14px 0; }
+.column-panel h4 { margin: 0 0 12px; color: #365f7e; font-size: 13px; }
+.column-panel .filter-form { display: grid; grid-template-columns: minmax(100px, 160px) minmax(100px, 1fr); gap: 8px 14px; align-items: center; }
+.column-panel .filter-form .field-label { margin: 0; }
+.column-panel .filter-form button, .column-panel .filter-form .target-error { grid-column: 1 / -1; }
+.filter-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.filter-chip { border: 1px solid #bcd5e5; border-radius: 6px; padding: 6px 8px; font-size: 10px; background: #edf6fc; color: #365f7e; text-align: left; overflow-wrap: anywhere; }
+.filter-summary { font-size: 10px; color: #416f8b; line-height: 1.6; margin-top: 8px; overflow-wrap: anywhere; }
+.filter-form > button { margin-top: 10px; }
+.filters-editor > button { margin-top: 10px; }
+@media (max-width: 720px) { .column-panel .filter-form { grid-template-columns: 1fr; } }
 .preview-divider { width: 100%; border-top: 1px solid var(--accent-mid); align-self: center; }
 .preview-callout { color: var(--accent); border-left: 2px solid var(--accent); padding-left: 5px; font-size: 8px; overflow: hidden; }
 .preview-table .icon { width: 16px; height: 16px; color: var(--accent); }

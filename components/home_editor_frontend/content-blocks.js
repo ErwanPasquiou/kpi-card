@@ -1,6 +1,8 @@
 /* Blocs éditoriaux : schéma borné, migration et présentation sans HTML utilisateur. */
 (function (root) {
   "use strict";
+  const K = typeof module !== "undefined" && module.exports ? require("./data.js") : root.KPIData;
+  const F = typeof module !== "undefined" && module.exports ? require("./filters.js") : root.KPIFilters;
   const MAX_COLUMNS = 6, MAX_TABLE_ROWS = 20, MAX_CELL = 240;
   const STYLES = ["paragraph", "heading1", "heading2"];
   const TONES = {info: "Information", success: "Décision / réussite", warning: "Point de vigilance"};
@@ -30,9 +32,16 @@
       lineStyle: ["solid", "dashed", "dotted"].includes(raw.lineStyle) ? raw.lineStyle : "solid",
       spacing: [12, 24, 40].includes(raw.spacing) ? raw.spacing : 24,
     };
-    if (raw.type === "table") {
+    if (raw.type === "manualTable" || raw.type === "table" && raw.table !== undefined && raw.sourceId === undefined) {
       const table = normalizeTable(raw.table);
       return table ? {table} : null;
+    }
+    if (raw.type === "table") {
+      const sourceId = K.TABLES.some((table) => table.id === raw.sourceId) ? raw.sourceId : "sales";
+      const table = K.tableDefinition(sourceId), filters = F.normalize(raw.filters, table), sort = F.normalizeSort(raw.sort, table);
+      if (!filters || !sort) return null;
+      return {sourceId, filters, sort, period: K.validPeriod(raw.period) ? raw.period : "inherit",
+        pageSize: [10, 25, 50].includes(raw.pageSize) ? raw.pageSize : 10};
     }
     if (raw.type === "callout") return {
       tone: Object.hasOwn(TONES, raw.tone) ? raw.tone : "info",
@@ -63,7 +72,7 @@
       box.append(el("p", "", block.content || "Votre message"));
       body.append(box);
     }
-    if (block.type === "table") {
+    if (block.type === "manualTable") {
       const data = block.table || defaults();
       const wrap = el("div", "editorial-table-scroll");
       wrap.tabIndex = 0; wrap.setAttribute("role", "region");
@@ -119,7 +128,7 @@
       select("Intention", "callout-tone", Object.entries(TONES), block.tone || "info", (value) => { block.tone = value; });
       field("Titre de l’encadré", "callout-heading", block.heading || "", (value) => { block.heading = value; }, 120);
     }
-    if (block.type !== "table") return;
+    if (block.type !== "manualTable") return;
     block.table ||= defaults();
     const data = block.table;
     container.append(el("p", "width-help", "Modifiez les en-têtes et les cellules. Jusqu’à 6 colonnes et 20 lignes. Aucune connexion à une source."));

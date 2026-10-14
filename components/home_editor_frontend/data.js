@@ -1,6 +1,7 @@
 /* Tables fictives déterministes, calculs des KPI et export. Aucune requête externe. */
 (function (root) {
   "use strict";
+  const F = typeof module !== "undefined" && module.exports ? require("./filters.js") : root.KPIFilters;
   const DAY = 86400000;
   const PERIODS = [
     {id: "rolling12", label: "12 mois glissants"},
@@ -146,14 +147,19 @@
 
   function createModel(referenceDate = today()) {
     const tables = generateTables(referenceDate), cache = new Map();
-    function source(tableId, period = "rolling12") {
+    function source(tableId, period = "rolling12", filters = []) {
       const table = tableDefinition(tableId), range = bounds(period, referenceDate);
-      return {table, range, rows: tables[table.id].filter((row) => row.date >= range.start && row.date <= range.end)};
+      const valid = F.normalize(filters, table);
+      if (!valid) throw new Error("Filtres invalides pour cette source.");
+      const dated = tables[table.id].filter((row) => row.date >= range.start && row.date <= range.end);
+      return {table, range, filters: valid, rows: F.apply(dated, valid, table)};
     }
-    function evaluate(kpiId, period = "rolling12") {
-      const kpi = definition(kpiId), key = `${kpi.id}:${validPeriod(period) ? period : "rolling12"}`;
+    function evaluate(kpiId, period = "rolling12", filters = []) {
+      const kpi = definition(kpiId), normalized = F.normalize(filters, tableDefinition(kpi.table));
+      if (!normalized) throw new Error("Filtres invalides pour cet indicateur.");
+      const key = `${kpi.id}:${validPeriod(period) ? period : "rolling12"}:${JSON.stringify(normalized)}`;
       if (cache.has(key)) return cache.get(key);
-      const data = source(kpi.table, period), rows = data.rows.filter(kpi.filter);
+      const data = source(kpi.table, period, normalized), rows = data.rows.filter(kpi.filter);
       const daily = ["month1", "week1"].includes(data.range.period);
       const bucketKey = (date) => daily ? date : date.slice(0, 7);
       const groups = new Map();
@@ -174,6 +180,7 @@
         cursor = daily ? addDays(cursor, 1) : shiftMonths(cursor, 1);
       }
       const result = {...data, rows, kpi, value: kpi.calculate(rows), series, granularity: daily ? "jour" : "mois"};
+      if (cache.size >= 100) cache.delete(cache.keys().next().value);
       cache.set(key, result);
       return result;
     }
@@ -190,7 +197,7 @@
     return "\uFEFF" + [table.columns.map((column) => cell(column.label)).join(";"),
       ...rows.map((row) => table.columns.map((column) => cell(row[column.key])).join(";"))].join("\r\n") + "\r\n";
   }
-  const api = {PERIODS, TABLES, KPIS, today, bounds, rangeLabel, formatDate, validPeriod, isKpi, definition, formatValue, createModel, toCsv,
+  const api = {PERIODS, TABLES, KPIS, today, bounds, rangeLabel, formatDate, validPeriod, isKpi, definition, tableDefinition, formatValue, createModel, toCsv,
     calculationHelpers: {sum, mean, percent}};
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.KPIData = api;

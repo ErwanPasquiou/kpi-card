@@ -61,8 +61,8 @@ test("les valeurs de présentation sont bornées et les cellules limitées", () 
 });
 
 test("chaque tableau manuel possède ses propres cellules", () => {
-  const a = layout(block("table")).blocks[0];
-  const b = layout(block("table", {id: "b"})).blocks[0];
+  const a = layout(block("manualTable")).blocks[0];
+  const b = layout(block("manualTable", {id: "b"})).blocks[0];
   a.table.rows[0][0] = "Personnalisé";
   assert.notEqual(b.table.rows[0][0], a.table.rows[0][0]);
   const copy = layout({...a, id: "copy"}).blocks[0];

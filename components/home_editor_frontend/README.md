@@ -26,7 +26,7 @@ du navigateur (Streamlit autorise la mise en cache de ces fichiers).
    possible de cliquer sur un type de bloc, puis sur une case (souris, clavier ou tactile).
 4. Sélectionner un bloc pour changer son contenu et sa largeur dans le panneau.
    Les réglages sont regroupés en rubriques repliables : **Contenu**, **Données et
-   période**, **Objectif**, **Présentation** et **Disposition**, selon le type de bloc.
+   période**, **Filtres**, **Objectif**, **Présentation** et **Disposition**, selon le type de bloc.
    Leur état ouvert ou fermé est conservé pendant la session pour chaque bloc.
    Les largeurs dépassant le prochain bloc ou la fin de ligne sont désactivées.
 5. Utiliser la poignée pour le déplacer, ou **Déplacer** puis choisir une case.
@@ -62,18 +62,23 @@ du navigateur (Streamlit autorise la mise en cache de ces fichiers).
   à la ligne sont conservés ; le HTML saisi reste du texte.
 - **Séparateur** occupe six colonnes par défaut. Son libellé est facultatif ; choisir
   un trait continu, en tirets ou en pointillés et un espacement compact, normal ou aéré.
-- **Tableau** est un contenu manuel de démonstration, indépendant des tables sources KPI.
-  Modifier son titre, ses en-têtes et ses cellules dans Contenu. Ajouter ou supprimer
-  des colonnes et des lignes ; limites : 1 à 6 colonnes, 1 à 20 lignes, 240 caractères
-  par cellule/en-tête. La suppression agit sur le brouillon ; **Annuler** restaure le
-  dernier tableau de bord enregistré. Aucun calcul, import ou export propre au bloc.
+- **Tableau** affiche les lignes brutes d’une source fictive, avec une période héritée
+  ou propre au bloc et 10, 25 ou 50 lignes par page. Cliquer sur un en-tête ouvre le
+  tri croissant/décroissant et les filtres de cette colonne. Le tri porte sur toutes
+  les lignes filtrées, avant pagination ; les valeurs manquantes viennent à la fin.
+  Les changements en lecture sont enregistrés localement, ceux en édition restent
+  dans le brouillon. Changer de source réinitialise tri et filtres.
+- Les anciens **Tableaux manuels** restent modifiables et duplicables (6 colonnes,
+  20 lignes, 240 caractères par cellule). Ils ne sont plus proposés à l’ajout.
 - **Encadré** met en évidence une information, un point de vigilance ou une décision.
-  Son titre est facultatif. Le libellé d'intention complète la couleur pour rester lisible.
+  En lecture, saisir directement son titre et son texte puis **Enregistrer la note**.
+  **Annuler la saisie** restaure la dernière note enregistrée. Sans enregistrement,
+  quitter le rapport perd la saisie. La sauvegarde appartient à ce navigateur.
 - **Dupliquer**, dans Disposition, crée une copie indépendante avec la même largeur
   au prochain emplacement libre (puis recherche depuis le début si nécessaire).
   Les KPI et objectifs sont également copiés. Une grille pleine affiche un message.
 
-Le modèle **Vue d'ensemble** inclut un séparateur, un plan d'action manuel et un
+Le modèle **Vue d'ensemble** inclut un séparateur, un tableau brut des opérations et un
 encadré de décision. Pour les découvrir avec une collection existante, créer un
 nouveau tableau à partir de ce modèle ; les tableaux enregistrés ne sont pas modifiés.
 
@@ -89,7 +94,7 @@ reviennent à des valeurs sûres ; toutes les saisies sont rendues avec `textCon
 Les versions restent collection 2 / layout 1 avec champs optionnels. La compatibilité
 est ascendante : un ancien lecteur ne reconnaît pas les nouveaux types. Éviter un
 retour à l'ancien frontend sur la même collection. Les tests sont dans
-`tests/content-blocks.test.cjs` et se lancent avec `node --test tests/content-blocks.test.cjs`.
+`tests/content-blocks.test.cjs` et se lancent avec `node --test tests/content-blocks.test.cjs tests/filters.test.cjs`.
 
 ### Modèles
 
@@ -129,6 +134,30 @@ filtrées utilisées par le KPI, triées de la date la plus récente à la plus 
 Le CSV utilise UTF-8 avec BOM, un séparateur point-virgule, des décimales avec virgule,
 des dates ISO et des champs entre guillemets. Les valeurs manquantes sont vides.
 Les chaînes qui pourraient être interprétées comme des formules de tableur sont protégées.
+
+## Filtres de blocs
+
+`filters.js` valide et applique jusqu’à 20 conditions `{column, op, value}` combinées
+avec ET. `interactive-blocks.js` porte le formulaire partagé, les tableaux et les notes.
+Les cartes et graphiques proposent la rubrique **Filtres** dans leurs réglages.
+Les colonnes proviennent de la source du KPI. Un changement de KPI conserve les filtres
+si la source reste identique ; sinon ils sont retirés. Les objectifs restent inchangés
+lors d’un changement de filtre ; adapter la cible au périmètre est un choix utilisateur.
+
+Les textes sont comparés sans distinction de casse ou d’accents (`eq`, `ne`, `contains`).
+Les nombres et dates acceptent `eq`, `ne`, `gte`, `lte`. Tous acceptent `empty` et
+`notEmpty`. Une valeur nulle ou vide ne satisfait aucune autre comparaison, y compris
+`ne`. Les dates sont des jours ISO valides, les bornes sont inclusives et les nombres
+acceptent les espaces de groupement et la virgule décimale française.
+
+Le filtrage précède le calcul métier, le total et les séries. Détail et CSV reprennent
+exactement les lignes du calcul. Le cache distingue les configurations de filtres et
+reste borné à 100 résultats. Sans observation, les comptages/sommes valent zéro,
+les moyennes/taux restent indéfinis. Les filtres sont locaux au bloc, jamais globaux.
+
+Les tableaux `table` enregistrent `sourceId`, `period`, `filters`, `sort`, `pageSize`.
+Les anciens tableaux avec cellules migrent explicitement vers `manualTable`, avec
+leur contenu conservé. Les blocs KPI sans `filters` reçoivent une liste vide.
 
 ## Périodes
 

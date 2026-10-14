@@ -18,13 +18,15 @@
 ## Contrats fonctionnels et données
 
 - Garder les textes d’interface en français et respecter l’identité visuelle KPI-Card.
-- Préserver la grille de six colonnes, les blocs texte (Titre 1, Titre 2, paragraphe), graphique, carte, séparateur, tableau manuel et encadré, les alternatives au glisser-déposer (clic, clavier ou tactile), et l’accessibilité clavier. Les anciens blocs `title` sont migrés en `text` de niveau 1. `content-blocks.js` centralise les schémas et la présentation des blocs éditoriaux.
+- Préserver la grille de six colonnes, les blocs texte (Titre 1, Titre 2, paragraphe), graphique, carte, séparateur, tableau brut (et anciens tableaux manuels) et encadré, les alternatives au glisser-déposer (clic, clavier ou tactile), et l’accessibilité clavier. Les anciens blocs `title` sont migrés en `text` de niveau 1. `content-blocks.js` centralise les schémas et la présentation des blocs éditoriaux.
 - La collection enregistrée est actuellement en version 2 sous `kpi-card:dashboards:v2` dans le `localStorage`. La disposition des blocs est en version 1. Les tableaux, favoris, périodes, KPI et objectifs y sont enregistrés ; les lignes de démonstration sont régénérées.
 - Toute évolution du format sauvegardé doit accepter les données antérieures, prévoir une migration explicite, préserver les saisies personnalisées et rester compatible avec les limites et validations centralisées dans `dashboards.js` et `layout.js`. Ne jamais supposer que la collection du navigateur est valide.
-- Un bloc KPI possède notamment `kpiId`, `period` et `target`. `period: "inherit"` suit la période du tableau. Les changements de KPI doivent conserver les règles du projet sur la réinitialisation des objectifs, leurs unités et leur validation.
+- Un bloc KPI possède notamment `kpiId`, `period`, `filters` et `target`. `period: "inherit"` suit la période du tableau. Les changements de KPI doivent conserver les règles du projet sur la réinitialisation des objectifs, leurs unités et leur validation.
 - Ajouter ou modifier un KPI de façon cohérente dans le registre de `data.js`, sa définition et son calcul, sa documentation et son SQL dans `catalogue-model.js`, ainsi que les éventuels exemples et migrations concernés. Garder cohérents les libellés, unités, filtres, granularités et agrégations.
 - Ne pas additionner les taux, moyennes ou nombres distincts pour produire un total : recalculer selon la définition du KPI. Documenter les règles de dates inclusives, périodes partielles, fuseau et valeurs sans observation quand elles sont concernées.
 - Le CSV est une sortie utilisateur : préserver le format attendu (UTF-8 avec BOM, séparateur point-virgule, décimales françaises) et la protection contre l’injection de formules dans les tableurs.
+
+- `filters.js` centralise la validation, le filtrage typé, le tri et la pagination ; `interactive-blocks.js` porte leurs interfaces et les notes en lecture. Appliquer les filtres avant les calculs et conserver le même périmètre dans le détail et le CSV. Préserver la migration des anciennes tables vers `manualTable`. Les interactions en lecture sauvegardent localement, en édition elles restent dans le brouillon.
 
 ## Frontend et cache
 
@@ -45,6 +47,6 @@
 
 - Garder les noms de fichiers et modules existants et utiliser les chemins relatifs au dépôt. Éviter les chemins personnels ou les dépendances à PyCharm.
 - Le lancement local documenté est : créer un environnement virtuel, installer `requirements.txt`, puis lancer `streamlit run app.py`. Aucune étape npm n’est requise.
-- Les tests ciblés des blocs se lancent avec `node --test tests/content-blocks.test.cjs` (Node.js 20+ ; inutile pour lancer l'application). Aucun workflow CI ni build npm n'est configuré. Pour une validation, effectuer les vérifications adaptées à l’environnement disponible, puis distinguer clairement ce qui a été vérifié de ce qui ne l’a pas été.
+- Les tests ciblés des blocs se lancent avec `node --test tests/content-blocks.test.cjs tests/filters.test.cjs` (Node.js 20+ ; inutile pour lancer l'application). Aucun workflow CI ni build npm n'est configuré. Pour une validation, effectuer les vérifications adaptées à l’environnement disponible, puis distinguer clairement ce qui a été vérifié de ce qui ne l’a pas été.
 - `.gitignore` exclut notamment les environnements virtuels, caches Python et fichiers `.env`. Avant toute contribution, ne pas ajouter de secrets ni de configuration locale ; garder les configurations de déploiement non sensibles.
 - Pour une contribution, résumer les fichiers touchés, les changements de format ou migrations, les vérifications réellement effectuées et les limites restantes. Ne pas déclarer une fonctionnalité terminée si elle n’est que documentée ou simulée.

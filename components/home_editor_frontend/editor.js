@@ -6,6 +6,8 @@
   const K = window.KPIData;
   const T = window.KPITargets;
   const B = window.ContentBlocks;
+  const F = window.KPIFilters;
+  const I = window.InteractiveBlocks;
   const dataModel = K.createModel();
   const $ = (id) => document.getElementById(id);
   const root = $("editor"), canvas = $("canvas");
@@ -14,7 +16,8 @@
     chart: {label: "Graphique", hint: "Un KPI dans le temps", span: 3, content: "Chiffre d’affaires HT"},
     card: {label: "Carte", hint: "Un KPI en un chiffre", span: 2, content: "Chiffre d’affaires HT"},
     separator: {label: "Séparateur", hint: "Une respiration entre sections", span: 6, content: ""},
-    table: {label: "Tableau", hint: "Un suivi saisi à la main", span: 6, content: "Plan d’action"},
+    table: {label: "Tableau", hint: "Données brutes, tri et filtres", span: 6, content: "Données sources"},
+    manualTable: {label: "Tableau manuel", hidden: true},
     callout: {label: "Encadré", hint: "Information, vigilance, décision", span: 3, content: "Présentez ici le message à retenir."},
   };
   const paths = {
@@ -90,7 +93,19 @@
   function lastRow() { return Math.max(-1, ...blocks.map((block) => block.row)); }
   function activePayload() { return dragging || pending; }
   function metricPeriod(block, board = draftBoard) { return K.validPeriod(block.period) ? block.period : board?.period || "rolling12"; }
-  function metricResult(block, board = draftBoard) { return dataModel.evaluate(block.kpiId, metricPeriod(block, board)); }
+  function metricResult(block, board = draftBoard) { return dataModel.evaluate(block.kpiId, metricPeriod(block, board), block.filters || []); }
+
+  function updateInteractiveBlock(block, patch) {
+    const candidate = blocks.map((item) => item.id === block.id ? {...item, ...patch} : item);
+    const layout = L.normalize({version: 1, blocks: candidate});
+    if (!layout) { notify("Les réglages de ce bloc ne sont pas valides.", true); return false; }
+    Object.assign(block, patch);
+    if (editing) { renderInspector(); return true; }
+    draftBoard = D.normalizeBoard({...draftBoard, layout, updatedAt: Date.now()});
+    collection = D.upsert(collection, draftBoard);
+    saved = clone(layout);
+    return persistCollection("Bloc enregistré dans ce navigateur.") ? true : "session";
+  }
 
   function fillPeriods(select, value, inherit = false) {
     select.replaceChildren();
@@ -233,7 +248,7 @@
         mini.append(el("span", "preview-line"), el("span", "preview-line short"));
       }
       if (block.type === "separator") mini.append(el("span", "preview-divider"));
-      if (block.type === "table") mini.append(icon("table"), el("span", "preview-text", block.content || "Tableau"));
+      if (["table", "manualTable"].includes(block.type)) mini.append(icon("table"), el("span", "preview-text", block.content || "Tableau"));
       if (block.type === "callout") mini.append(el("span", "preview-callout", block.heading || block.content));
       if (block.type === "chart") {
         const chart = el("span", "preview-bars");
@@ -499,7 +514,9 @@
 
   function renderBody(block) {
     const body = el("div", "block-body");
-    B.render(block, body, el);
+    if (block.type === "table") I.table(block, body, dataModel, metricPeriod(block), (patch) => updateInteractiveBlock(block, patch));
+    else if (block.type === "callout" && !editing) I.note(block, body, (patch) => updateInteractiveBlock(block, patch));
+    else B.render(block, body, el);
     if (["chart", "card"].includes(block.type)) {
       const result = metricResult(block);
       const target = T.evaluate(block.target, result);
@@ -509,6 +526,7 @@
       if (block.content && block.content !== result.kpi.label) body.append(el("p", "metric-definition", result.kpi.label));
       body.append(el("p", "metric-period", `${result.range.label} · ${result.rows.length.toLocaleString("fr-FR")} lignes`),
         el("p", "metric-range", K.rangeLabel(result.range)));
+      if (result.filters.length) body.append(el("p", "filter-summary", F.describe(result.filters, result.table)));
       if (target) body.append(renderTargetSummary(target, result.kpi, block.type === "chart"));
       if (block.type === "chart" && (result.rows.length || target)) {
         body.append(renderChart(block, result, target));
@@ -611,6 +629,7 @@
     const palette = $("palette");
     palette.replaceChildren();
     for (const [type, definition] of Object.entries(definitions)) {
+      if (definition.hidden) continue;
       const item = button("", "palette-item", () => arm({type}));
       item.draggable = true;
       item.setAttribute("aria-label", `Ajouter un bloc ${definition.label}`);
@@ -692,7 +711,7 @@
     const metric = ["chart", "card"].includes(block.type);
     const content = inspectorSection(inspector, "content", "Contenu", !metric);
     const contentLabel = el("label", "field-label", block.type === "chart" ? "Nom du graphique" : block.type === "card" ? "Nom de la carte" :
-      block.type === "table" ? "Titre du tableau" : block.type === "separator" ? "Libellé (facultatif)" : "Contenu");
+      ["table", "manualTable"].includes(block.type) ? "Titre du tableau" : block.type === "separator" ? "Libellé (facultatif)" : "Contenu");
     contentLabel.htmlFor = "block-content";
     const multiline = ["text", "callout"].includes(block.type);
     const input = el(multiline ? "textarea" : "input", "field");
@@ -708,6 +727,29 @@
     if (!metric) B.settings(block, content, {
       el, button, changed: renderCanvas, rebuild: renderInspector, focus: focusInspector,
     });
+    if (block.type === "table") {
+      const data = inspectorSection(inspector, "data", "Données et période", true);
+      const label = el("label", "field-label", "Source du tableau"); label.htmlFor = "block-source";
+      const source = el("select", "field"); source.id = "block-source";
+      for (const table of K.TABLES) {
+        const option = el("option", "", table.label); option.value = table.id; source.append(option);
+      }
+      source.value = block.sourceId;
+      source.addEventListener("change", () => {
+        block.sourceId = source.value; block.filters = []; block.sort = {column: "date", direction: "desc"};
+        renderCanvas(); renderInspector(); focusInspector("block-source");
+        notify("Source modifiée : les filtres et le tri ont été réinitialisés.");
+      });
+      const periodLabel = el("label", "field-label", "Période du bloc"); periodLabel.htmlFor = "block-period";
+      const period = el("select", "field"); period.id = "block-period"; fillPeriods(period, block.period, true);
+      period.addEventListener("change", () => { block.period = period.value; renderCanvas(); });
+      const sizeLabel = el("label", "field-label", "Lignes par page"); sizeLabel.htmlFor = "block-page-size";
+      const size = el("select", "field"); size.id = "block-page-size";
+      for (const count of [10, 25, 50]) { const option = el("option", "", String(count)); option.value = String(count); size.append(option); }
+      size.value = String(block.pageSize);
+      size.addEventListener("change", () => { block.pageSize = Number(size.value); renderCanvas(); });
+      data.append(label, source, periodLabel, period, sizeLabel, size);
+    }
     if (metric) {
       const data = inspectorSection(inspector, "data", "Données et période", true);
       const label = el("label", "field-label", "KPI à afficher");
@@ -729,6 +771,10 @@
         const previous = K.definition(block.kpiId);
         const hadTarget = T.hasValue({...block.target, mode: "monthly"}) || T.hasValue({...block.target, mode: "simple"});
         block.kpiId = select.value;
+        if (previous.table !== K.definition(block.kpiId).table) {
+          block.filters = [];
+          notify("Source modifiée : les filtres de l’ancien indicateur ont été retirés.");
+        }
         block.target = T.normalize({period: block.target?.period}, block.kpiId);
         if (!block.content || block.content === previous.label) block.content = K.definition(block.kpiId).label;
         renderCanvas(); renderInspector();
@@ -752,6 +798,13 @@
       const inspect = button("Voir les données", "button small", () => openBlockData(block, inspect), "table");
       data.append(label, select, periodLabel, period, info, inspect);
       renderTargetSettings(inspectorSection(inspector, "target", "Objectif"), block, result);
+    }
+    if (metric || block.type === "table") {
+      const table = K.tableDefinition(metric ? K.definition(block.kpiId).table : block.sourceId);
+      I.filterEditor(inspectorSection(inspector, "filters", "Filtres", true), table, block.filters || [], (filters) => {
+        block.filters = filters; renderCanvas(); renderInspector();
+        notify(filters.length ? "Filtres appliqués au bloc. Enregistrez le tableau pour les conserver." : "Filtres retirés.");
+      });
     }
     if (block.type === "chart") {
       const presentation = inspectorSection(inspector, "presentation", "Présentation");
@@ -998,6 +1051,7 @@
     const {data} = detail;
     $("data-title").textContent = detail.title;
     $("data-description").textContent = `${data.table.label} · ${data.table.grain} · ${K.rangeLabel(data.range)}`;
+    if (data.filters?.length) $("data-description").textContent += " · " + F.describe(data.filters, data.table);
     $("source-controls").hidden = !detail.source;
     $("source-table").value = data.table.id;
     $("source-period").value = data.range.period;

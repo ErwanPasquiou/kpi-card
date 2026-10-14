@@ -4,7 +4,7 @@
 
 KPI-Card est une application Streamlit en français. Son accueil rassemble des tableaux
 de bord personnalisables, composés de textes et titres, graphiques, cartes de chiffres clés,
-séparateurs, tableaux manuels et encadrés.
+séparateurs, tableaux de données brutes et encadrés modifiables en lecture.
 Un catalogue explique la définition métier et technique des indicateurs.
 
 > **État actuel : POC local avec données fictives.** L'éditeur, les objectifs et le
@@ -35,10 +35,12 @@ traitée dans Databricks ; le POC actuel sert à construire l'expérience utilis
 | Exemples | Quatre modèles : Vue d'ensemble, Performance commerciale, Suivi des projets, Satisfaction client. |
 | Favoris | Ajout/retrait d'un favori et filtre des tableaux favoris. |
 | Éditeur | Mode édition, panneau latéral, grille de six colonnes, ajout et déplacement par glisser-déposer ou par clic. |
-| Blocs | Texte (Titre 1, Titre 2 ou paragraphe), Graphique, Carte, Séparateur, Tableau manuel et Encadré ; largeur de une à six colonnes selon la place disponible. |
+| Blocs | Texte (Titre 1, Titre 2 ou paragraphe), Graphique, Carte, Séparateur, Tableau de données et Encadré ; largeur de une à six colonnes selon la place disponible. |
 | Composition | Alignement du texte, séparateurs configurables, encadrés information/vigilance/décision et duplication indépendante des blocs. |
-| Tableau manuel | En-têtes et cellules éditables ; ajout/suppression de lignes et colonnes, jusqu’à 20 lignes et 6 colonnes. |
-| Paramétrage | Rubriques repliables : Contenu, Données et période, Objectif, Présentation et Disposition, selon le bloc. |
+| Tableau | Sources Ventes, Opérations ou Retours clients ; pagination 10/25/50 lignes ; tri et filtres depuis les en-têtes en lecture. Les anciens tableaux manuels sont conservés. |
+| Encadré vivant | Saisie du titre et de la note en lecture, avec Enregistrer la note et Annuler la saisie. |
+| Filtres des blocs | Conditions sur les colonnes sources, appliquées avant calcul aux cartes, graphiques, données détaillées et CSV. |
+| Paramétrage | Rubriques repliables : Contenu, Données et période, Filtres, Objectif, Présentation et Disposition, selon le bloc. |
 | Graphiques | Barres ou courbes ; choix du KPI ; période héritée du tableau ou spécifique au bloc. |
 | Objectifs | Mode simple et mode avancé avec douze valeurs mensuelles ; minimum à atteindre ou plafond à respecter. |
 | Comparaison | Valeur cible, écart absolu et relatif, statut et jauge sur les cartes ; ligne d'objectif sur les graphiques. |
@@ -153,6 +155,8 @@ le port utilisé et les URL des fichiers avant de modifier le composant.
         ├── layout.js             # Grille, placement et normalisation des blocs
         ├── content-blocks.js     # Textes, séparateurs, tableaux manuels et encadrés
         ├── dashboards.js         # Collection, exemples et migrations
+        ├── filters.js            # Validation, filtrage typé, tri et pagination
+        ├── interactive-blocks.js # Tableaux bruts, filtres et notes en lecture
         ├── data.js               # Sources fictives, KPI, périodes et CSV
         ├── targets.js            # Objectifs, prorata, comparaison et formatage
         ├── catalogue-model.js    # Documentation métier, données et SQL
@@ -179,7 +183,7 @@ Les compositions locales des utilisateurs ne font pas partie du dépôt GitHub.
 
 Un bloc contient notamment `id`, `type`, `row`, `col`, `span` et `content`.
 Les indices de position commencent à zéro. Un bloc KPI contient aussi `kpiId`,
-`period` et `target`. `period: "inherit"` suit la période du tableau.
+`period`, `filters` et `target`. `period: "inherit"` suit la période du tableau.
 
 ```json
 {
@@ -214,6 +218,19 @@ La collection reste en version 2 et la disposition en version 1. Le nouveau lect
 accepte les anciens formats ; une ancienne version de l'application ne sait pas lire
 les nouveaux types de blocs. Ne pas alterner anciennes et nouvelles versions sur
 la même sauvegarde. Aucun contenu personnalisé existant n'est remplacé par un modèle.
+
+### Filtres et interactions en lecture
+
+Chaque carte, graphique et tableau brut accepte jusqu’à 20 conditions combinées avec ET,
+en plus de sa période et des règles métier du KPI. Les filtres utilisent les colonnes
+de la source : égalité, différence, texte contenant, bornes numériques ou dates, valeurs
+vides/non vides. Les objectifs restent ceux saisis ; ils ne sont pas réduits par les filtres.
+
+Les nouveaux blocs `table` enregistrent `sourceId`, `period`, `filters`, `sort` et
+`pageSize`. Les anciens blocs avec `table: {columns, rows}` migrent vers `manualTable`
+sans perte des saisies. Les tris et filtres changés en lecture sont sauvegardés localement ;
+en édition, ils appartiennent au brouillon. Les notes se sauvegardent via **Enregistrer
+la note** directement dans l’encadré. Aucune synchronisation entre utilisateurs.
 
 ## Cible de production Databricks
 
@@ -351,7 +368,7 @@ Le dépôt fournit des tests ciblés des blocs et de leur compatibilité. Depuis
 racine, avec une version récente de Node.js (20 ou supérieure), exécuter :
 
 ```bash
-node --test tests/content-blocks.test.cjs
+node --test tests/content-blocks.test.cjs tests/filters.test.cjs
 ```
 
 Node.js sert uniquement à ces tests : il n'est pas nécessaire au lancement de l'application.
