@@ -422,8 +422,12 @@ textarea.field { resize: vertical; min-height: 100px; }
 
 .palette-category > summary { padding: 12px 0; cursor: pointer; font-weight: 700; color: #234e64; }
 .palette-category .palette-item { margin-bottom: 8px; }
-.kpi-info { float: right; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #edf6fb; color: #246e94; font-size: 23px; text-decoration: none; }
-.kpi-info:focus-visible, .section-toggle:focus-visible { outline: 3px solid #35b5cf; outline-offset: 3px; }
+.metric-heading { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 4px; }
+.metric-heading .chart-heading { flex: 1; min-width: 0; margin: 0; padding-top: 5px; }
+.kpi-info-link { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 28px; width: 28px; height: 28px; padding: 0; margin: 0; border: 1px solid transparent; border-radius: 7px; color: #6b8394; background: transparent; text-decoration: none; transition: color .15s, background .15s, border-color .15s; }
+.kpi-info-link .icon { width: 17px; height: 17px; }
+.kpi-info-link:hover { color: #1976b9; background: #ecf4f9; border-color: #dce6ed; }
+.kpi-info-link:focus-visible, .section-toggle:focus-visible { outline: 3px solid #35b5cf; outline-offset: 3px; }
 .block[data-type="section"] { background: #eaf4fa; border-color: #bdd8e6; }
 .block[data-type="section"] .block-body { padding: 0; }
 .section-toggle { width: 100%; padding: 18px 22px; display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; text-align: left; border: 0; background: transparent; color: #234e64; font: inherit; cursor: pointer; }

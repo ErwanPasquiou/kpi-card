@@ -30,6 +30,7 @@
     callout: {label: "Encadré", hint: "Information, vigilance, décision", span: 3, content: "Présentez ici le message à retenir."},
   };
   const paths = {
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',
     section: '<path d="M3 6h18M3 12h12M3 18h12M18 15l3 3-3 3"/>',
     actionPlan: '<path d="m3 6 2 2 3-4M11 6h10M3 13h5M11 13h10M3 20h5M11 20h10"/>',
     verticalSeparator: '<path d="M12 3v18M5 7v10M19 7v10"/>',
@@ -629,7 +630,8 @@
     if (["chart", "card"].includes(block.type)) {
       const result = metricResult(block);
       const target = T.evaluate(block.target, result);
-      const info = el("a", "kpi-info", "ⓘ");
+      const info = el("a", "kpi-info-link");
+      info.append(icon("info"));
       const appUrl = new URL(document.referrer || window.location.href);
       appUrl.pathname = appUrl.pathname.replace(/[^/]*$/, "catalogue-kpi");
       appUrl.search = ""; appUrl.hash = ""; appUrl.searchParams.set("kpi", block.kpiId);
@@ -637,8 +639,9 @@
       info.title = "Comprendre cet indicateur";
       info.setAttribute("aria-label", `Informations sur ${result.kpi.label} — nouvel onglet`);
       info.addEventListener("click", event => event.stopPropagation());
-      body.append(info);
-      body.append(el("h3", "chart-heading", block.content || result.kpi.label),
+      const heading = el("div", "metric-heading");
+      heading.append(el("h3", "chart-heading", block.content || result.kpi.label), info);
+      body.append(heading,
         el("p", "demo-label", `${result.table.label} · Données fictives`),
         el("p", block.type === "card" ? "metric-value" : "metric-total", K.formatValue(result.value, result.kpi)));
       if (block.content && block.content !== result.kpi.label) body.append(el("p", "metric-definition", result.kpi.label));
