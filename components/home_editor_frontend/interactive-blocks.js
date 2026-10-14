@@ -101,11 +101,11 @@
     parent.append(wrap);
     return input;
   }
-  function table(block, body, model, period, update, globalFilters = []) {
+  function table(block, body, model, period, update, globalFilters = [], configurable = true) {
     const surface = el("section", "source-table-block");
     // Empêcher une interaction interne de reconstruire l'inspecteur du bloc.
     surface.addEventListener("click", (event) => event.stopPropagation());
-    surface.addEventListener("keydown", (event) => event.stopPropagation());
+    surface.addEventListener("keydown", (event) => { if (event.key !== "Escape") event.stopPropagation(); });
     let page = 0, selectedColumn = null;
     const commit = (patch) => {
       if (update(patch) === false) return;
@@ -123,7 +123,7 @@
         el("p", "metric-range", K.rangeLabel(data.range)),
         el("p", "filter-summary", F.describe(data.filters, data.table) || "Aucun filtre de colonne"));
       const hint = el("p", "width-help", "Cliquez sur un en-tête pour trier ou filtrer sa colonne.");
-      surface.append(hint);
+      if (configurable) surface.append(hint);
       if (selectedColumn) {
         const column = data.table.columns.find((item) => item.key === selectedColumn);
         const panel = el("section", "column-panel");
@@ -153,7 +153,8 @@
         trigger.dataset.column = column.key;
         trigger.setAttribute("aria-label", "Trier ou filtrer : " + column.label);
         trigger.setAttribute("aria-expanded", String(selectedColumn === column.key));
-        th.append(trigger); tr.append(th);
+        if (configurable) th.append(trigger); else th.append(document.createTextNode(column.label));
+        tr.append(th);
       }
       head.append(tr);
       for (const row of slice.rows) {

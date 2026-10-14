@@ -26,4 +26,5 @@ def render_home_editor():
 
 def render_kpi_catalogue():
     """Le catalogue utilise le même modèle de KPI que les blocs du hub."""
-    _editor(page="catalogue", sql_dialect="standard", key="kpi_catalogue", default=None)
+    _editor(page="catalogue", sql_dialect="standard", selected_kpi=st.query_params.get("kpi", ""),
+            key="kpi_catalogue", default=None)

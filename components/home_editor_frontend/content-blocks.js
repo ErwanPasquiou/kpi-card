@@ -3,6 +3,7 @@
   "use strict";
   const K = typeof module !== "undefined" && module.exports ? require("./data.js") : root.KPIData;
   const F = typeof module !== "undefined" && module.exports ? require("./filters.js") : root.KPIFilters;
+  const RB = typeof module !== "undefined" && module.exports ? require("./report-blocks.js") : root.ReportBlocks;
   const MAX_COLUMNS = 6, MAX_TABLE_ROWS = 20, MAX_CELL = 240;
   const STYLES = ["paragraph", "heading1", "heading2"];
   const TONES = {info: "Information", success: "Décision / réussite", warning: "Point de vigilance"};
@@ -24,6 +25,7 @@
       rows: raw.rows.map((row) => row.map((cell) => text(cell)))};
   }
   function normalize(raw) {
+    if (["section", "actionPlan", "verticalSeparator"].includes(raw.type)) return RB.normalize(raw);
     if (raw.type === "text" || raw.type === "title") return {
       textStyle: raw.type === "title" ? "heading1" : STYLES.includes(raw.textStyle) ? raw.textStyle : "paragraph",
       align: ["left", "center", "right"].includes(raw.align) ? raw.align : "left",
@@ -95,6 +97,7 @@
   }
   function settings(block, container, ui) {
     const {el, button, changed, rebuild, focus} = ui;
+    RB.settings(block, container, ui);
     function field(label, id, value, action, max = MAX_CELL) {
       const caption = el("label", "field-label", label); caption.htmlFor = id;
       const input = el("input", "field"); input.id = id; input.type = "text";

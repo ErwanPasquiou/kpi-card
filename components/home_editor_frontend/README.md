@@ -416,3 +416,42 @@ ses seules lignes, déjà soumises aux filtres du rapport et du bloc. **Autres**
 exactement les lignes regroupées. La pagination et le CSV respectent ce sous-ensemble.
 Le retour restaure le focus sur l’élément déclencheur sans modifier le rapport.
 **Voir toutes les données** conserve l’accès à toutes les lignes du bloc.
+
+
+## Présentation, sections et suivi d’actions
+
+`report-blocks.js` centralise la validation des nouveaux blocs, les lignes visibles
+lors d’un repli et le suivi d’actions. Il est chargé avant `content-blocks.js`.
+Les nouveaux types sont `section`, `actionPlan` et `verticalSeparator` ; les
+versions collection v2 et disposition v1 restent inchangées. Les anciens blocs
+ne changent pas de format et les séparateurs existants restent horizontaux.
+
+Une section a un `subtitle` (500 caractères) et un booléen `collapsed` (faux par
+défaut), occupe six colonnes depuis la colonne zéro sur une ligne libre et ne
+s’imbrique pas. La section suivante marque la fin du groupe. Les replis en lecture
+sont temporaires ; les lignes cachées sont retirées de la grille affichée sans
+modifier leurs coordonnées sauvegardées. En édition, toutes les sections sont
+ouvertes. Déplacer un titre redéfinit son groupe, sans déplacer son contenu ;
+supprimer le titre conserve les blocs. Le séparateur vertical reste large d’une
+colonne et s’étire sur sa ligne, avec `lineStyle` continu, tirets ou pointillés.
+
+Le plan possède `actions` (maximum 50), chacune avec `id` unique dans ce bloc,
+`title` (240 caractères), `owner` (120), `due` (date civile ISO valide ou vide) et
+`status` (`todo`, `doing`, `done`). Les responsables sont de simples libellés,
+sans identité ni notification. Le statut se sauvegarde localement en lecture.
+En édition, tous les champs suivent Enregistrer / Annuler. La duplication conserve
+les valeurs sans partager les objets d’actions entre blocs.
+
+Le mode présentation est temporaire et utilise Fullscreen API, avec repli vers une
+vue épurée si elle est refusée. Quitter ou Échap restaure les commandes ; les
+explorations restent possibles. Notes et statuts sont statiques, les commandes
+de tri et de filtre des tables sont masquées ; leur pagination reste disponible.
+Les filtres et la comparaison du rapport continuent de s’appliquer.
+
+Les liens d’information utilisent `catalogue-kpi?kpi=<identifiant>` dans un nouvel
+onglet (`noopener noreferrer`). Le pont Python transmet `selected_kpi` ; le
+frontend peut aussi lire le paramètre dans l’URL référente du composant, pour les
+sessions locales dont le pont Python n’a pas encore été rechargé. Le registre
+valide la sélection et un identifiant inconnu affiche un message puis le catalogue.
+
+Validation ciblée : `node --test tests/*.test.cjs`.

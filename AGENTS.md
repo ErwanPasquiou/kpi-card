@@ -54,3 +54,11 @@
 - Les tests ciblés des blocs se lancent avec `node --test tests/content-blocks.test.cjs tests/filters.test.cjs` (Node.js 20+ ; inutile pour lancer l'application). Aucun workflow CI ni build npm n'est configuré. Pour une validation, effectuer les vérifications adaptées à l’environnement disponible, puis distinguer clairement ce qui a été vérifié de ce qui ne l’a pas été.
 - `.gitignore` exclut notamment les environnements virtuels, caches Python et fichiers `.env`. Avant toute contribution, ne pas ajouter de secrets ni de configuration locale ; garder les configurations de déploiement non sensibles.
 - Pour une contribution, résumer les fichiers touchés, les changements de format ou migrations, les vérifications réellement effectuées et les limites restantes. Ne pas déclarer une fonctionnalité terminée si elle n’est que documentée ou simulée.
+
+
+- `report-blocks.js` porte les sections, séparateurs verticaux et plans d’action.
+  Préserver les sections pleine largeur, sans imbrication, les replis sans mutation
+  des coordonnées et les actions bornées à 50 avec dates civiles valides. Les
+  catégories de palette se ferment au début de l’édition. En présentation, aucune
+  interaction ne sauvegarde un changement ; conserver exploration et sortie clavier.
+  Le lien d’information KPI ouvre le catalogue ciblé dans un nouvel onglet.

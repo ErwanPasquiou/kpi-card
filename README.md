@@ -393,3 +393,21 @@ les conflits de révision et les performances sous charge.
 Ce README est le point d'entrée du projet pour les contributeurs et les agents de
 développement. Il distingue le code livré des décisions d'architecture et des
 fonctionnalités restant à implémenter.
+
+
+### Présenter et organiser un rapport
+
+Le bouton **Présenter** affiche le rapport en plein écran (ou en vue épurée si le
+navigateur refuse), avec une sortie visible et Échap. Les graphiques restent
+explorables, mais les notes, statuts et réglages sont en consultation.
+Le bouton **ⓘ** des cartes et graphiques ouvre la fiche du KPI dans un nouvel
+onglet du **Catalogue KPI**, sans quitter le rapport ni perdre son brouillon.
+
+La palette regroupe les blocs en **Indicateurs et graphiques**, **Données**,
+**Texte et suivi** et **Structure**. Le **Plan d’action** suit jusqu’à 50 actions
+avec responsable libre, échéance facultative, statut et progression. Le statut
+se modifie en lecture ; la structure se configure en modification.
+Une **Section rétractable** pleine largeur regroupe les lignes suivantes jusqu’à
+la section suivante ; titre, sous-titre et état initial sont configurables.
+Le **Séparateur vertical** occupe une colonne sur la hauteur de sa ligne.
+Ces fonctionnalités restent locales au navigateur, sans comptes ni partage.

@@ -10,20 +10,29 @@
   const I = window.InteractiveBlocks;
   const C = window.ChartStyles;
   const R = window.ReportAnalysis;
+  const RB = window.ReportBlocks;
+  let presenting = false;
+  const sectionState = new Map(), paletteState = new Map();
   let reportSource = "sales";
   const dataModel = K.createModel();
   const $ = (id) => document.getElementById(id);
   const root = $("editor"), canvas = $("canvas");
   const definitions = {
+    section: {label: "Section rétractable", hint: "Regrouper les blocs qui suivent", span: 6, content: "Nouvelle section"},
+    actionPlan: {label: "Plan d’action", hint: "Actions, responsables et échéances", span: 3, content: "Plan d’action"},
+    verticalSeparator: {label: "Séparateur vertical", hint: "Séparer deux zones côte à côte", span: 1, content: ""},
     text: {label: "Texte", hint: "Titre 1, titre 2 ou paragraphe", span: 3, content: "Écrivez votre texte ici."},
     chart: {label: "Graphique", hint: "Un KPI dans le temps", span: 3, content: "Chiffre d’affaires HT"},
     card: {label: "Carte", hint: "Un KPI en un chiffre", span: 2, content: "Chiffre d’affaires HT"},
-    separator: {label: "Séparateur", hint: "Une respiration entre sections", span: 6, content: ""},
+    separator: {label: "Séparateur horizontal", hint: "Une respiration entre sections", span: 6, content: ""},
     table: {label: "Tableau", hint: "Données brutes, tri et filtres", span: 6, content: "Données sources"},
-    manualTable: {label: "Tableau manuel", hidden: true},
+    manualTable: {label: "Tableau manuel", hint: "Contenu saisi librement", span: 6, content: "Tableau manuel"},
     callout: {label: "Encadré", hint: "Information, vigilance, décision", span: 3, content: "Présentez ici le message à retenir."},
   };
   const paths = {
+    section: '<path d="M3 6h18M3 12h12M3 18h12M18 15l3 3-3 3"/>',
+    actionPlan: '<path d="m3 6 2 2 3-4M11 6h10M3 13h5M11 13h10M3 20h5M11 20h10"/>',
+    verticalSeparator: '<path d="M12 3v18M5 7v10M19 7v10"/>',
     edit: '<path d="m15 4 5 5M4 20l4-1L20 7a2 2 0 0 0-5-5L3 14l-1 6z"/>',
     text: '<path d="M4 5h16M4 10h16M4 15h11M4 20h8"/>',
     title: '<path d="M4 5h16M12 5v15M8 20h8"/>',
@@ -158,6 +167,7 @@
   }
 
   function updateInteractiveBlock(block, patch) {
+    if (presenting) return false;
     const candidate = blocks.map((item) => item.id === block.id ? {...item, ...patch} : item);
     const layout = L.normalize({version: 1, blocks: candidate});
     if (!layout) { notify("Les réglages de ce bloc ne sont pas valides.", true); return false; }
@@ -238,6 +248,7 @@
   function openDashboard(id, edit = false) {
     const board = collection.dashboards.find((item) => item.id === id);
     if (!board) return;
+    sectionState.clear();
     draftBoard = clone(board);
     saved = clone(board.layout);
     blocks = clone(saved.blocks);
@@ -399,6 +410,9 @@
   function startEditing() {
     editing = true;
     selectedId = null;
+    sectionState.clear();
+    paletteState.clear();
+    for (const node of $("palette").querySelectorAll("details")) node.open = false;
     for (const id of ["board-section", "palette-section", "settings-section"]) $(id).open = false;
     inspectorSections.clear();
     rows = Math.min(L.MAX_ROWS, Math.max(3, lastRow() + 2));
@@ -482,12 +496,30 @@
     fillPeriods($("view-period"), draftBoard.period);
     $("board-period-summary").textContent = K.rangeLabel(K.bounds(draftBoard.period, dataModel.referenceDate));
     if (editing) actions.append(button("Annuler", "button", cancel), button("Enregistrer", "button primary", save, "check"));
-    else actions.append(favoriteButton(draftBoard), button("Modifier", "button primary", startEditing, "edit"));
+    else if (presenting) actions.append(button("Quitter la présentation", "button primary", stopPresentation));
+    else actions.append(favoriteButton(draftBoard), button("Présenter", "button", startPresentation), button("Modifier", "button primary", startEditing, "edit"));
     renderCanvas();
     renderPalette();
     renderInspector();
   }
 
+  async function startPresentation() {
+    if (editing || view === "hub") return;
+    presenting = true; root.classList.add("presenting"); render();
+    try { await root.requestFullscreen(); }
+    catch (_) { notify("Vue présentation activée. Le plein écran n’est pas disponible dans ce navigateur."); }
+    $("toolbar-actions").querySelector("button")?.focus();
+  }
+  function stopPresentation() {
+    if (!presenting) return;
+    presenting = false; root.classList.remove("presenting");
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    if (detail) closeDataPanel();
+    render();
+    [...$("toolbar-actions").querySelectorAll("button")].find(b => b.textContent === "Présenter")?.focus();
+  }
+  document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && presenting) stopPresentation(); });
+  function collapsedSection(block) { return sectionState.get(`${draftBoard.id}:${block.id}`) ?? block.collapsed; }
   function gridPosition(node, row, col, span = 1) {
     node.style.gridRow = String(row + 1);
     node.style.gridColumn = `${col + 1} / span ${span}`;
@@ -497,11 +529,12 @@
 
   function renderCanvas() {
     canvas.replaceChildren();
+    const visible = RB.visibleRows(blocks, block => !editing && collapsedSection(block));
     // Seules les lignes exclusivement séparatrices deviennent compactes.
     // Conserver la hauteur des lignes vides et des compositions existantes.
-    canvas.style.gridTemplateRows = editing ? "" : Array.from({length: lastRow() + 1}, (_, row) => {
+    canvas.style.gridTemplateRows = editing ? "" : [...visible.keys()].map(row => {
       const items = blocks.filter((block) => block.row === row);
-      return items.length && items.every((block) => block.type === "separator") ? "minmax(0, auto)" : "minmax(90px, auto)";
+      return items.length && items.every((block) => ["separator", "section"].includes(block.type)) ? "minmax(0, auto)" : "minmax(90px, auto)";
     }).join(" ");
     if (!editing && !blocks.length) {
       const empty = el("div", "empty-state");
@@ -523,10 +556,11 @@
       }
     }
     for (const block of [...blocks].sort((a, b) => a.row - b.row || a.col - b.col)) {
+      if (!editing && !visible.has(block.row)) continue;
       const card = el("article", "block");
       card.dataset.id = block.id;
       card.dataset.type = block.type;
-      gridPosition(card, block.row, block.col, block.span);
+      gridPosition(card, editing ? block.row : visible.get(block.row), block.col, block.span);
       card.classList.toggle("selected", editing && block.id === selectedId);
       card.classList.toggle("moving", activePayload()?.id === block.id);
       card.setAttribute("aria-label", `${definitions[block.type].label}, ligne ${block.row + 1}, colonne ${block.col + 1}, largeur ${block.span}`);
@@ -556,7 +590,7 @@
       if (!editing && ["chart", "card"].includes(block.type)) {
         card.classList.add("data-block");
         card.addEventListener("click", (event) => {
-          if (!event.target.closest("button, [role=button]")) openBlockData(block, card.querySelector(".block-data-button"));
+          if (!event.target.closest("a, button, [role=button]")) openBlockData(block, card.querySelector(".block-data-button"));
         });
       }
       card.append(renderBody(block));
@@ -573,12 +607,37 @@
 
   function renderBody(block) {
     const body = el("div", "block-body");
-    if (block.type === "table") I.table(block, body, dataModel, metricPeriod(block), (patch) => updateInteractiveBlock(block, patch), R.filtersFor(draftBoard, block));
-    else if (block.type === "callout" && !editing) I.note(block, body, (patch) => updateInteractiveBlock(block, patch));
+    if (block.type === "section") {
+      const toggle = button("", "section-toggle", () => {
+        if (editing) return;
+        sectionState.set(`${draftBoard.id}:${block.id}`, !collapsedSection(block));
+        renderCanvas(); [...canvas.querySelectorAll(".block")].find(node => node.dataset.id === block.id)?.querySelector("button")?.focus({preventScroll: true});
+      });
+      toggle.setAttribute("aria-disabled", String(editing)); toggle.setAttribute("aria-expanded", String(editing || !collapsedSection(block)));
+      toggle.append(el("strong", "", block.content || "Section"), el("span", "", block.subtitle || ""));
+      body.append(toggle);
+    }
+    else if (block.type === "actionPlan") RB.renderActions(block, body, {el, editable: !editing && !presenting, update: patch => updateInteractiveBlock(block, patch)});
+    else if (block.type === "verticalSeparator") {
+      const rule = el("div", "vertical-separator"); rule.style.borderLeftStyle = block.lineStyle;
+      rule.setAttribute("role", "separator"); rule.setAttribute("aria-orientation", "vertical");
+      rule.setAttribute("aria-label", block.content || "Séparateur vertical"); body.append(rule);
+    }
+    else if (block.type === "table") I.table(block, body, dataModel, metricPeriod(block), (patch) => updateInteractiveBlock(block, patch), R.filtersFor(draftBoard, block), !presenting);
+    else if (block.type === "callout" && !editing && !presenting) I.note(block, body, (patch) => updateInteractiveBlock(block, patch));
     else B.render(block, body, el);
     if (["chart", "card"].includes(block.type)) {
       const result = metricResult(block);
       const target = T.evaluate(block.target, result);
+      const info = el("a", "kpi-info", "ⓘ");
+      const appUrl = new URL(document.referrer || window.location.href);
+      appUrl.pathname = appUrl.pathname.replace(/[^/]*$/, "catalogue-kpi");
+      appUrl.search = ""; appUrl.hash = ""; appUrl.searchParams.set("kpi", block.kpiId);
+      info.href = appUrl.href; info.target = "_blank"; info.rel = "noopener noreferrer";
+      info.title = "Comprendre cet indicateur";
+      info.setAttribute("aria-label", `Informations sur ${result.kpi.label} — nouvel onglet`);
+      info.addEventListener("click", event => event.stopPropagation());
+      body.append(info);
       body.append(el("h3", "chart-heading", block.content || result.kpi.label),
         el("p", "demo-label", `${result.table.label} · Données fictives`),
         el("p", block.type === "card" ? "metric-value" : "metric-total", K.formatValue(result.value, result.kpi)));
@@ -706,23 +765,33 @@
 
   function renderPalette() {
     const palette = $("palette");
+    for (const node of palette.querySelectorAll("details[data-category]")) paletteState.set(node.dataset.category, node.open);
     palette.replaceChildren();
-    for (const [type, definition] of Object.entries(definitions)) {
-      if (definition.hidden) continue;
-      const item = button("", "palette-item", () => arm({type}));
-      item.draggable = true;
-      item.setAttribute("aria-label", `Ajouter un bloc ${definition.label}`);
-      item.setAttribute("aria-pressed", String(pending?.type === type));
-      item.classList.toggle("armed", pending?.type === type);
-      const symbol = el("span", "palette-icon");
-      symbol.append(icon(type));
-      const text = el("span");
-      text.append(el("strong", "", definition.label), el("small", "", definition.hint));
-      const grip = el("span", "palette-grip");
-      grip.append(icon("grip"));
-      item.append(symbol, text, grip);
-      attachDrag(item, {type});
-      palette.append(item);
+    const categories = [["Indicateurs et graphiques", ["card", "chart"]], ["Données", ["table", "manualTable"]],
+      ["Texte et suivi", ["text", "callout", "actionPlan"]], ["Structure", ["section", "separator", "verticalSeparator"]]];
+    for (const [name, types] of categories) {
+      const group = el("details", "palette-category"); group.dataset.category = name; group.open = paletteState.get(name) || false;
+      group.append(el("summary", "", name));
+      group.addEventListener("toggle", () => { if (group.isConnected) paletteState.set(name, group.open); });
+      palette.append(group);
+      for (const type of types) {
+        const definition = definitions[type];
+        if (definition.hidden) continue;
+        const item = button("", "palette-item", () => arm({type}));
+        item.draggable = true;
+        item.setAttribute("aria-label", `Ajouter un bloc ${definition.label}`);
+        item.setAttribute("aria-pressed", String(pending?.type === type));
+        item.classList.toggle("armed", pending?.type === type);
+        const symbol = el("span", "palette-icon");
+        symbol.append(icon(type));
+        const text = el("span");
+        text.append(el("strong", "", definition.label), el("small", "", definition.hint));
+        const grip = el("span", "palette-grip");
+        grip.append(icon("grip"));
+        item.append(symbol, text, grip);
+        attachDrag(item, {type});
+        group.append(item);
+      }
     }
     $("placement-hint").hidden = !pending;
     $("placement-hint").textContent = pending ? "Cliquez sur une case pour déposer le bloc. Échap pour annuler." : "";
@@ -791,7 +860,7 @@
     const metric = ["chart", "card"].includes(block.type);
     const content = inspectorSection(inspector, "content", "Contenu", !metric);
     const contentLabel = el("label", "field-label", block.type === "chart" ? "Nom du graphique" : block.type === "card" ? "Nom de la carte" :
-      ["table", "manualTable"].includes(block.type) ? "Titre du tableau" : block.type === "separator" ? "Libellé (facultatif)" : "Contenu");
+      ["section", "actionPlan"].includes(block.type) ? "Titre" : ["table", "manualTable"].includes(block.type) ? "Titre du tableau" : block.type === "separator" ? "Libellé (facultatif)" : "Contenu");
     contentLabel.htmlFor = "block-content";
     const multiline = ["text", "callout"].includes(block.type);
     const input = el(multiline ? "textarea" : "input", "field");
@@ -933,7 +1002,7 @@
         focusInspector($("inspector").querySelector(`[data-span="${span}"]`));
       });
       choice.dataset.span = span;
-      choice.disabled = span > free;
+      choice.disabled = span > free || block.type === "section" && span !== 6 || block.type === "verticalSeparator" && span !== 1;
       choice.classList.toggle("active", span === block.span);
       choice.setAttribute("aria-pressed", String(span === block.span));
       choice.setAttribute("aria-label", `${span} colonne${span > 1 ? "s" : ""}`);
@@ -1250,6 +1319,7 @@
     if (payload.id && !existing) return null;
     const definition = definitions[payload.type];
     if (!existing && !definition) return null;
+    if ((existing?.type || payload.type) === "section" && (col !== 0 || L.availableSpan(blocks, row, col, existing?.id) < 6)) return null;
     return L.placement(blocks, row, col, existing?.span || definition.span, existing?.id);
   }
 
@@ -1343,6 +1413,7 @@
   canvas.addEventListener("pointerleave", () => { if (!dragging) clearPreview(); });
   document.addEventListener("keydown", (event) => {
     if (catalogueMode) return;
+    if (event.key === "Escape" && presenting && !detail) { event.preventDefault(); stopPresentation(); return; }
     if (event.key === "Escape" && detail) {
       event.preventDefault();
       closeDataPanel();
@@ -1418,7 +1489,7 @@
       root.hidden = true;
       $("catalogue").hidden = false;
       document.title = "Catalogue KPI · KPI-Card";
-      window.KPICatalogue.mount($("catalogue"), dataModel, {dialect: args.sql_dialect});
+      window.KPICatalogue.mount($("catalogue"), dataModel, {dialect: args.sql_dialect, selectedId: args.selected_kpi || new URL(document.referrer || window.location.href).searchParams.get("kpi")});
       return;
     }
     storageKey = args.storage_key || "kpi-card:dashboards:v2";

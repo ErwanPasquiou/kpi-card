@@ -9,7 +9,7 @@
   const C = typeof module !== "undefined" && module.exports ? require("./chart-styles.js") : root.ChartStyles;
   const MAX_ROWS = 100;
   // "title" reste accepté en entrée ; normalisé en texte de niveau 1.
-  const TYPES = ["text", "title", "chart", "card", "separator", "table", "manualTable", "callout"];
+  const TYPES = ["text", "title", "chart", "card", "separator", "table", "manualTable", "callout", "section", "actionPlan", "verticalSeparator"];
   const LEGACY_KPIS = {
     "overview-chart": "delivered_count", "sales-revenue": "revenue", "sales-wins": "sales_count",
     "projects-deliveries": "delivered_count", "customers-satisfaction": "satisfaction", "customers-feedback": "feedback_count",
@@ -57,6 +57,8 @@
           ids.has(raw.id) || !TYPES.includes(raw.type) ||
           !Number.isInteger(raw.span) || raw.span < 1 || raw.span > COLS ||
           raw.span > availableSpan(blocks, raw.row, raw.col)) return null;
+      if (raw.type === "section" && (raw.col !== 0 || raw.span !== COLS)) return null;
+      if (raw.type === "verticalSeparator" && raw.span !== 1) return null;
       ids.add(raw.id);
       const chartData = raw.type === "chart" ? normalizeChart(raw.chartData) : undefined;
       if (raw.type === "chart" && !chartData) return null;

@@ -49,10 +49,11 @@
 
   function mount(container, dataModel, options = {}) {
     const entries = C.entries();
-    let selectedId = entries[0]?.id, source = "", query = "", period = "rolling12", activeTab = "business";
+    let selectedId = entries.some(entry => entry.id === options.selectedId) ? options.selectedId : entries[0]?.id, source = "", query = "", period = "rolling12", activeTab = "business";
     let dialect = ["standard", "databricks", "postgresql"].includes(options.dialect) ? options.dialect : "standard";
     let sqlMode = "value";
     container.replaceChildren();
+    if (options.selectedId && !entries.some(entry => entry.id === options.selectedId)) container.append(el("p", "hint", "Cet indicateur est inconnu. Retrouvez les indicateurs disponibles ci-dessous."));
     const intro = el("header", "catalogue-intro");
     const heading = el("div");
     heading.append(el("div", "eyebrow", "VOTRE RÉFÉRENTIEL MÉTIER ET TECHNIQUE"), el("h1", "", "Catalogue KPI"),
