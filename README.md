@@ -450,8 +450,7 @@ En modification, régler le titre du bloc, le nombre et le nom de ses colonnes.
 Les nouveaux blocs proposent **À faire** et **En cours** (une seule colonne si le
 bloc occupe une colonne de la grille). Le maximum correspond à la largeur du
 bloc. Les anciennes notes et actions sont reprises sans perte ; les anciens
-plans peuvent conserver une troisième colonne Terminé. L’état terminé d’un
-post-it se coche dans sa fiche et reste indépendant des noms libres des colonnes.
+plans peuvent conserver une troisième colonne Terminé. La colonne du post-it indique seule son avancement.
 
 Une poignée au bord droit de chaque bloc redimensionnable permet d’ajuster sa
 largeur à la souris ou au toucher, avec les flèches gauche/droite au clavier.
@@ -467,3 +466,8 @@ colonne de destination, responsable, échéance et autres réglages s’y trouve
 Le choix de colonne dans la fiche, puis Enregistrer, remplace le déplacement
 au clavier/tactile ; le glisser-déposer entre colonnes reste disponible directement.
 La suppression depuis la fiche peut toujours être annulée.
+
+
+Le suivi des post-it repose uniquement sur leur colonne : la case « Action terminée »,
+le badge de statut et la progression globale sont retirés. Le filtre d’avancement
+est remplacé par un filtre sur les colonnes configurées.

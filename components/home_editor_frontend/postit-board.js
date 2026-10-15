@@ -34,11 +34,11 @@
     return block.actions.map(a => a.id === id ? {...a, columnId} : {...a});
   }
   let seq = 0;
-  function render(block, body, {el, editable, update, overdue, validDate, filters = {}, undo = null}) {
+  function render(block, body, {el, editable, update, validDate, filters = {}, undo = null}) {
     const actions = block.actions || [], columns = block.columns;
     function button(label, fn) { const b=el("button","button small",label); b.type="button"; b.addEventListener("click",fn); return b; }
     function redraw(nextUndo = null, focusId = null) {
-      body.replaceChildren(); render(block,body,{el,editable,update,overdue,validDate,filters,undo:nextUndo});
+      body.replaceChildren(); render(block,body,{el,editable,update,validDate,filters,undo:nextUndo});
       const note=[...body.querySelectorAll("[data-note-id]")].find(n=>n.dataset.noteId===focusId);
       (note?.querySelector(".postit-open") || body.querySelector(".postit-add"))?.focus({preventScroll:true});
     }
@@ -69,8 +69,6 @@
       const priority=select("Priorité","priority",Object.entries(PRIORITIES),action?.priority||"normal");
       const owner=field("Responsable","owner",action?.owner,"text",120);
       const due=field("Échéance","due",action?.due,"date");
-      const doneLabel=el("label","filter-value-option"),done=el("input");done.type="checkbox";done.checked=action?.status==="done";
-      doneLabel.append(done,document.createTextNode("Action terminée"));form.append(doneLabel);
       const controls=el("div","action-controls"),save=el("button","button small primary","Enregistrer le post-it");save.type="submit";
       const message=el("p","hint");message.setAttribute("role","status");
       controls.append(save,button("Annuler",()=>redraw(null,action?.id)));
@@ -82,15 +80,13 @@
         e.preventDefault();if(!title.value.trim()){title.setCustomValidity("Saisissez un titre.");title.reportValidity();return;}
         if(due.value&&!validDate(due.value)){due.setCustomValidity("Saisissez une date valide.");due.reportValidity();return;}
         const value={id:action?.id||crypto.randomUUID(),title:title.value.trim(),details:details.value,tone:tone.value,
-          columnId:column.value,priority:priority.value,owner:owner.value.trim(),due:due.value,status:done.checked?"done":action?.status==="doing"?"doing":"todo"};
+          columnId:column.value,priority:priority.value,owner:owner.value.trim(),due:due.value,status:action?.status||"todo"};
         if(!commit(action?actions.map(a=>a.id===action.id?value:a):[...actions,value],null,value.id)) message.textContent="Le post-it n’a pas pu être enregistré.";
       });
       form.addEventListener("keydown",e=>{if(e.key==="Escape"){e.preventDefault();e.stopPropagation();redraw(null,action?.id);}});
       body.append(form);title.focus({preventScroll:true});
     }
     body.append(el("h3","chart-heading",block.content||"Notes et actions"));
-    const done=actions.filter(a=>a.status==="done").length, late=actions.filter(a=>overdue(a)).length;
-    body.append(el("p","hint",`${done} / ${actions.length} terminé(s)`+(late?` · ${late} en retard`:"")));
     if(editable) {
       const filtersBox=el("details","postit-filters"),summary=el("summary","", "Filtrer les post-it");filtersBox.open=!!filters.open;
       filtersBox.addEventListener("toggle",()=>filters.open=filtersBox.open);filtersBox.append(summary);
@@ -102,7 +98,7 @@
       }
       filter("priority","Priorité",Object.entries(PRIORITIES));
       filter("owner","Responsable",[...new Set([...actions.map(a=>a.owner),filters.owner].filter(Boolean))].map(v=>[v,v]));
-      filter("status","État",[["open","À terminer"],["done","Terminé"],["late","En retard"]]);body.append(filtersBox);
+      filter("column","Colonne",columns.map(c=>[c.id,c.title]));body.append(filtersBox);
     }
     if(undo&&editable){const notice=el("div","action-undo");notice.setAttribute("role","status");notice.append(el("span","","Post-it supprimé."),button("Annuler la suppression",()=>commit(undo)));body.append(notice);}
     const grid=el("div","postit-board");grid.style.setProperty("--postit-columns",String(columns.length));
@@ -110,7 +106,7 @@
     for(const column of columns) {
       const lane=el("section","postit-column");lane.setAttribute("aria-label","Colonne : "+column.title);lane.dataset.columnId=column.id;
       const all=actions.filter(a=>a.columnId===column.id),shown=all.filter(a=>(!filters.priority||a.priority===filters.priority)&&(!filters.owner||a.owner===filters.owner)&&
-        (!filters.status||filters.status==="done"&&a.status==="done"||filters.status==="open"&&a.status!=="done"||filters.status==="late"&&overdue(a)));
+        (!filters.column||a.columnId===filters.column));
       lane.append(el("h4","postit-column-title",`${column.title} · ${shown.length}${shown.length!==all.length?" / "+all.length:""}`));
       if(editable){
         lane.addEventListener("dragover",e=>{if(!draggingId)return;e.preventDefault();e.stopPropagation();e.dataTransfer.dropEffect="move";lane.classList.add("postit-drop");});
@@ -120,8 +116,6 @@
       for(const action of shown){
         const note=el("article",`postit tone-${action.tone}`);note.dataset.noteId=action.id;
         const badges=el("div","postit-badges");badges.append(el("span","callout-label",TONES[action.tone]),el("span","action-badge priority-"+action.priority,PRIORITIES[action.priority]));
-        if(action.status==="done")badges.append(el("span","action-badge","Terminé"));
-        if(overdue(action))badges.append(el("span","action-late","En retard"));
         note.append(badges,el("strong","postit-title",action.title||"Note sans titre"));
         if(action.details)note.append(el("p","postit-text",action.details));
         if(editable){
@@ -152,7 +146,7 @@
       const input=el("input","field");input.id=caption.htmlFor;input.value=column.title;input.maxLength=80;
       input.addEventListener("input",()=>{column.title=input.value;changed();});container.append(caption,input);
     });
-    container.append(el("p","hint","Enregistrez le rapport pour ajouter, modifier et déplacer les post-it en lecture. Le statut Terminé se coche dans la note, indépendamment du nom des colonnes."));
+    container.append(el("p","hint","Enregistrez le rapport pour ajouter, modifier et déplacer les post-it en lecture. La colonne indique l’avancement du post-it."));
   }
   const api={normalize,fit,move,render,settings,TONES};
   if(typeof module!=="undefined"&&module.exports)module.exports=api;else root.PostitBoard=api;

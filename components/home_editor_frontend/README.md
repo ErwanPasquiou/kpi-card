@@ -546,12 +546,13 @@ Les colonnes retirées et leurs noms disparaissent, leurs notes rejoignent la
 dernière colonne restante. Agrandir ne recrée pas les anciens noms : augmenter
 ensuite le nombre de colonnes dans les réglages. Annuler le brouillon restaure tout.
 
-Les colonnes sont des catégories libres ; la case « Action terminée » dans la
-fiche reste indépendante de la colonne. Renommer « En cours » en « Validation »
-ne modifie donc pas implicitement l’état des actions. Les déplacements changent
-seulement `columnId`. La progression et les retards respectent toujours le statut.
-Les filtres de priorité, responsable et état (à terminer/terminé/en retard) sont
-temporaires. Les compteurs de colonne montrent les notes visibles / totales.
+Les colonnes indiquent seules l’avancement des post-it. Aucun statut terminé,
+compteur de progression ou badge de retard n’est déduit des noms de colonnes.
+Le champ historique `status` est conservé uniquement pour la migration des
+anciens plans sans colonnes ; il n’intervient plus dans l’interface. Les filtres
+portent sur la priorité, le responsable et la colonne. Responsable et échéance
+restent modifiables dans la fiche. Les compteurs par colonne affichent les notes
+visibles / totales.
 
 En lecture, saisie/suppression/déplacement passent par `updateInteractiveBlock`.
 Le glisser-déposer natif ne transporte qu’un identifiant issu du bloc courant ;
@@ -575,3 +576,8 @@ colonne de destination, responsable, échéance et autres réglages s’y trouve
 Le choix de colonne dans la fiche, puis Enregistrer, remplace le déplacement
 au clavier/tactile ; le glisser-déposer entre colonnes reste disponible directement.
 La suppression depuis la fiche peut toujours être annulée.
+
+
+Le suivi des post-it repose uniquement sur leur colonne : la case « Action terminée »,
+le badge de statut et la progression globale sont retirés. Le filtre d’avancement
+est remplacé par un filtre sur les colonnes configurées.

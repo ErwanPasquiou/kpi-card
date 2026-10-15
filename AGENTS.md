@@ -74,7 +74,12 @@
   deux par défaut (une si largeur 1). Réduire la largeur ou le nombre de colonnes
   regroupe les notes dans la dernière colonne sans les supprimer. Les anciens
   encadrés migrent dans `layout.js` sans perdre texte, titre ni badge ; les anciens
-  statuts sont conservés. La colonne et l’état terminé sont indépendants.
+  statuts sont conservés. La colonne seule indique l’avancement ; le statut historique ne sert qu’à la migration.
 - Les poignées de largeur suivent les mêmes contraintes que les réglages :
   six colonnes, pas de chevauchement, section toujours 6, séparateur vertical 1.
   Préserver le clavier, la capture pointeur, Échap et Annuler le brouillon.
+
+
+Le suivi des post-it repose uniquement sur leur colonne : la case « Action terminée »,
+le badge de statut et la progression globale sont retirés. Le filtre d’avancement
+est remplacé par un filtre sur les colonnes configurées.
