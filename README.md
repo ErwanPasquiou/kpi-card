@@ -420,3 +420,19 @@ Finance, Marketing, Ressources humaines, Opérations, Production, Logistique, Ac
 Qualité, Informatique, Support, Innovation, RSE, Juridique, Sécurité et Autre.
 Sur l’accueil, **Badge** à droite des favoris filtre les tableaux en combinaison
 avec la recherche et les favoris. Les badges historiques personnalisés sont conservés.
+
+
+### Suivi et commentaires
+
+Le plan d’action propose aussi des priorités Haute / Normale / Basse, le repérage
+des échéances dépassées et des filtres temporaires par statut, priorité,
+responsable ou retard. La progression porte toujours sur toutes les actions.
+Les graphiques peuvent recevoir des annotations datées directement en lecture,
+modifiables et supprimables, avec annulation de suppression. Les séries
+temporelles affichent un repère sur le jour ou le mois concerné ; les commentaires
+restent consultables sous toutes les formes de graphiques. Ces informations sont
+locales au navigateur et restent statiques en présentation.
+
+En modification, les commandes de chaque ligne permettent d’insérer une ligne
+avant elle et de monter ou descendre tous ses blocs ensemble. Les changements
+suivent Enregistrer / Annuler, dans la limite des 100 lignes de la grille.

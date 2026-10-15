@@ -16,7 +16,7 @@ test('repli des sections sans mutation, y compris sections consécutives et vide
 });
 
 test('actions : statuts, dates réelles, limites et identifiants uniques', () => {
-  const action = {id:'one',title:'Valider',owner:'Équipe',due:'2028-02-29',status:'doing'};
+  const action = {id:'one',title:'Valider',owner:'Équipe',due:'2028-02-29',status:'doing',priority:'normal'};
   assert.deepEqual(R.normalize({type:'actionPlan',actions:[action]}).actions,[action]);
   assert.equal(R.normalize({type:'actionPlan',actions:[{...action,due:'2026-02-29'}]}),null);
   assert.equal(R.normalize({type:'actionPlan',actions:[action,action]}),null);
@@ -38,4 +38,46 @@ test('nouveaux blocs : sauvegarde, duplication indépendante et dimensions', () 
   const copy=JSON.parse(JSON.stringify(layout.blocks[1])); copy.actions[0].status='todo';
   assert.equal(layout.blocks[1].actions[0].status,'done');
   for(const board of D.examples().dashboards) assert.ok(D.normalizeBoard(board));
+});
+
+
+test('priorités héritées, retards et filtres combinés sans changer la progression globale', () => {
+  const actions = R.normalize({type:'actionPlan',actions:[
+    {id:'a',due:'2026-10-14',owner:'Projet',status:'doing',priority:'high'},
+    {id:'b',due:'2026-10-14',owner:'Projet',status:'done'},
+    {id:'c',due:'2026-10-15',owner:'Ventes',status:'todo',priority:'bad'}
+  ]}).actions;
+  assert.equal(actions[2].priority,'normal');
+  assert.deepEqual(R.filterActions(actions,{late:true},'2026-10-15').map(a=>a.id),['a']);
+  assert.equal(R.filterActions(actions,{owner:'Projet',status:'done'},'2026-10-15').length,1);
+  assert.equal(R.filterActions(actions,{priority:'high',owner:'Ventes'}).length,0);
+  assert.equal(R.overdue(actions[2],'2026-10-15'),false);
+});
+
+test('insérer et déplacer une ligne conserve tous les blocs, les largeurs et la validation', () => {
+  const blocks = [{id:'a',type:'text',row:0,col:0,span:2}, {id:'b',type:'text',row:0,col:2,span:4},
+    {id:'s',type:'section',row:1,col:0,span:6}, {id:'c',type:'text',row:2,col:0,span:3}];
+  const original=JSON.stringify(blocks);
+  assert.deepEqual(L.insertRow(blocks,1).map(b=>b.row),[0,0,2,3]);
+  const moved=L.moveRow(blocks,0,2);
+  assert.deepEqual(moved.map(b=>b.row),[2,2,0,1]);
+  assert.ok(L.normalize({version:1,blocks:moved}));
+  assert.deepEqual(L.moveRow(moved,2,0),blocks);
+  assert.equal(JSON.stringify(blocks),original);
+  assert.equal(L.insertRow([{...blocks[0],row:99}],0),null);
+  assert.equal(L.moveRow(blocks,0,100),null);
+  assert.equal(L.insertRow(blocks,-1),null);
+});
+
+test('annotations : validation, bornes temporelles et conservation après sauvegarde', () => {
+  const A=require('../components/home_editor_frontend/chart-annotations.js');
+  const notes=[{id:'launch',date:'2026-10-14',text:'Lancement <script>'}];
+  assert.deepEqual(A.normalize(undefined),[]);
+  assert.equal(A.normalize([{...notes[0],date:'2026-02-30'}]),null);
+  assert.equal(A.normalize([...notes,...notes]),null);
+  assert.equal(A.normalize(Array.from({length:31},(_,i)=>({...notes[0],id:String(i)}))),null);
+  assert.deepEqual(A.markers(notes,[{start:'2026-10-01',end:'2026-10-14'},{start:'2026-10-15',end:'2026-10-31'}]),[notes,[]]);
+  const saved=L.normalize({version:1,blocks:[{id:'graph',type:'chart',row:0,col:0,span:6,annotations:notes}]});
+  assert.deepEqual(saved.blocks[0].annotations,notes);
+  assert.deepEqual(L.normalize(JSON.parse(JSON.stringify(saved))),saved);
 });

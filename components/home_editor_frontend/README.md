@@ -479,3 +479,45 @@ l’iframe dans la page Streamlit et écoute le défilement parent en capture.
 Les mises à jour sont regroupées par animation frame, les dimensions observées,
 et les écouteurs parent nettoyés à la fermeture. Le focus d’un réglage défile
 uniquement à l’intérieur du panneau. Sur mobile, le panneau reste dans le flux.
+
+
+## Priorités, annotations et organisation des lignes
+
+En lecture, les actions proposent une priorité Haute / Normale / Basse, avec
+Normale pour les anciennes sauvegardes. Une action non terminée dont l’échéance
+précède le jour civil courant en Europe/Paris est signalée en retard (pas le jour
+même de l’échéance). Les filtres temporaires statut, priorité, responsable et
+retard se combinent ; ils ne modifient ni les actions ni la progression globale.
+Ils sont réinitialisés à la réouverture du rapport. Les actions restent statiques
+en modification du rapport et en présentation.
+
+`chart-annotations.js` valide et affiche jusqu’à 30 commentaires datés par
+graphique (`annotations: [{id, date, text}]`, texte limité à 1 000 caractères).
+Une ancienne sauvegarde reçoit une liste vide. En lecture, **Annoter le graphique**
+ouvre la saisie : Enregistrer, Modifier, Supprimer et annulation de la dernière
+suppression sauvegardent localement. Annuler/Échap abandonne la saisie.
+En modification et présentation, ces commentaires sont en consultation.
+Les graphiques temporels placent un repère au point de la journée ou du mois
+contenant la date, avec le nombre de commentaires et une infobulle. Tous les
+commentaires restent lisibles sous le graphique, y compris sur les anneaux et
+barres horizontales ; ceux hors période sont identifiés. Ils appartiennent au
+bloc : un changement de KPI, de forme ou de filtre les conserve, sans en faire
+une explication automatiquement validée des variations. Ils n’affectent aucun
+calcul ni export CSV de données. Les dates et identifiants sont validés, le texte
+est rendu comme texte, jamais comme HTML.
+
+En modification, chaque ligne dispose de **Insérer avant**, **Monter** et
+**Descendre**. Une insertion décale les lignes suivantes ; un déplacement
+transporte tous les blocs de la ligne, sans changer leurs colonnes ni largeurs.
+Les fonctions pures `HomeLayout.insertRow` / `moveRow` portent ces règles. La
+limite de 100 lignes et les sections pleine largeur sont conservées. Déplacer
+une ligne de titre de section redéfinit son groupe, sans emporter les lignes
+suivantes. Enregistrer/Annuler s’applique à toute la disposition. Les lignes
+vides intérieures sont conservées par les coordonnées ; les lignes vides après
+le dernier bloc restent un espace de composition temporaire, comme auparavant.
+Les rangées de commandes sont seulement visuelles : elles ne changent pas les
+indices sauvegardés ni les destinations du glisser-déposer.
+
+Les versions collection 2 et disposition 1 sont inchangées ; priorité et
+annotations sont des champs optionnels normalisés. Validation :
+`node --test tests/content-blocks.test.cjs tests/filters.test.cjs tests/report-blocks.test.cjs`.

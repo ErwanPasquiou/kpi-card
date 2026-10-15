@@ -7,6 +7,7 @@
   const F = typeof module !== "undefined" && module.exports ? require("./filters.js") : root.KPIFilters;
   const COLS = 6;
   const C = typeof module !== "undefined" && module.exports ? require("./chart-styles.js") : root.ChartStyles;
+  const A = typeof module !== "undefined" && module.exports ? require("./chart-annotations.js") : root.ChartAnnotations;
   const MAX_ROWS = 100;
   // "title" reste accepté en entrée ; normalisé en texte de niveau 1.
   const TYPES = ["text", "title", "chart", "card", "separator", "table", "manualTable", "callout", "section", "actionPlan", "verticalSeparator"];
@@ -62,6 +63,8 @@
       ids.add(raw.id);
       const chartData = raw.type === "chart" ? normalizeChart(raw.chartData) : undefined;
       if (raw.type === "chart" && !chartData) return null;
+      const annotations = raw.type === "chart" ? A.normalize(raw.annotations) : [];
+      if (!annotations) return null;
       const editorial = B.normalize(raw);
       if (!editorial) return null;
       const kpiId = K.isKpi(raw.kpiId) ? raw.kpiId : LEGACY_KPIS[raw.id] || "revenue";
@@ -74,7 +77,7 @@
         content: String(raw.content ?? "").slice(0, 5000),
         ...editorial,
         chartKind: C.normalize(raw.chartKind),
-        ...(raw.type === "chart" ? {groupBy: C.dimension(K.tableDefinition(K.definition(kpiId).table), raw.groupBy)?.key || ""} : {}),
+        ...(raw.type === "chart" ? {annotations, groupBy: C.dimension(K.tableDefinition(K.definition(kpiId).table), raw.groupBy)?.key || ""} : {}),
         ...(chartData ? {chartData} : {}),
         ...(["chart", "card"].includes(raw.type) ? {
           kpiId, filters,
@@ -97,7 +100,18 @@
     return null;
   }
 
-  const api = {COLS, MAX_ROWS, TYPES, DEFAULT_CHART, normalizeChart, availableSpan, placement, normalize, duplicatePlacement};
+  // Une ligne se déplace avec tous ses blocs, sans modifier leurs colonnes.
+  function insertRow(blocks, row) {
+    if (!Number.isInteger(row) || row < 0 || row >= MAX_ROWS || blocks.some(b => b.row >= MAX_ROWS - 1)) return null;
+    return blocks.map(b => ({...b, row: b.row >= row ? b.row + 1 : b.row}));
+  }
+  function moveRow(blocks, from, to) {
+    if (![from, to].every(r => Number.isInteger(r) && r >= 0 && r < MAX_ROWS)) return null;
+    return blocks.map(b => ({...b, row: b.row === from ? to :
+      from < to && b.row > from && b.row <= to ? b.row - 1 :
+      from > to && b.row >= to && b.row < from ? b.row + 1 : b.row}));
+  }
+  const api = {COLS, MAX_ROWS, TYPES, DEFAULT_CHART, normalizeChart, availableSpan, placement, normalize, duplicatePlacement, insertRow, moveRow};
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.HomeLayout = api;
 })(globalThis);

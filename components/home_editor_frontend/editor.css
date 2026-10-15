@@ -462,3 +462,20 @@ textarea.field { resize: vertical; min-height: 100px; }
 .presenting .editor-toolbar { position: sticky; top: 0; z-index: 5; background: #f6f9fc; border-radius: 10px; padding: 12px; }
 .presenting .canvas { min-height: 0; }
 @media (max-width: 700px) { .presenting { padding: 12px; } .section-toggle { padding: 14px; } }
+
+/* Organisation des lignes et suivi opérationnel. */
+.row-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 4px 0; color: #587187; font-size: 11px; }
+.row-controls > span { margin-right: auto; font-weight: 650; }
+.row-controls .button { font-size: 11px; padding: 5px 9px; }
+.action-filters { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0; }
+.action-filters > label { flex: 1 1 130px; min-width: 0; }
+.action-filters .field { width: 100%; }
+.action-late { color: #a2432d; font-size: 12px; font-weight: 650; }
+.priority-high { background: #fff0dc; color: #88591c; }
+.priority-low { background: #f0f3f5; color: #587187; }
+.chart-annotations { border-top: 1px solid #dce6ed; margin-top: 16px; padding-top: 10px; cursor: default; }
+.chart-annotations h4 { margin: 0 0 10px; color: #365773; font-size: 12px; }
+.annotation-item { border-left: 3px solid #d5a752; padding: 6px 10px; margin: 10px 0; background: #fffbf1; border-radius: 4px; font-size: 12px; }
+.annotation-item p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0; }
+.annotation-form .field-label { display: block; margin: 10px 0 5px; }
+.annotation-form .field { width: 100%; }

@@ -2,6 +2,14 @@
 (function (root) {
   "use strict";
   const STATUSES = {todo: "À faire", doing: "En cours", done: "Terminé"};
+  const PRIORITIES = {high: "Haute", normal: "Normale", low: "Basse"};
+  const today = () => new Intl.DateTimeFormat("en-CA", {timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit"}).format(new Date());
+  const overdue = (action, date = today()) => action.status !== "done" && !!action.due && action.due < date;
+  function filterActions(actions, filters = {}, date = today()) {
+    return actions.filter(a => (!filters.status || a.status === filters.status) &&
+      (!filters.owner || a.owner === filters.owner) && (!filters.priority || a.priority === filters.priority) &&
+      (!filters.late || overdue(a, date)));
+  }
   const text = (value, max) => String(value ?? "").slice(0, max);
   function validDate(value) {
     if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -21,6 +29,7 @@
       if (action.due && !validDate(action.due)) return null;
       ids.add(action.id);
       result.push({id: action.id, title: text(action.title, 240), owner: text(action.owner, 120), due: action.due || "",
+        priority: Object.hasOwn(PRIORITIES, action.priority) ? action.priority : "normal",
         status: Object.hasOwn(STATUSES, action.status) ? action.status : "todo"});
     }
     return {actions: result};
@@ -38,16 +47,16 @@
     return rows;
   }
   let formSequence = 0;
-  function renderActions(block, body, {el, editable, update, undo = null}) {
+  function renderActions(block, body, {el, editable, update, undo = null, filters = {}}) {
     const actions = block.actions || [];
     function button(label, fn) {
       const node = el("button", "button small", label); node.type = "button";
       node.addEventListener("click", fn); return node;
     }
     function draw(nextUndo = null, focusId = null) {
-      body.replaceChildren(); renderActions(block, body, {el, editable, update, undo: nextUndo});
+      body.replaceChildren(); renderActions(block, body, {el, editable, update, undo: nextUndo, filters});
       const target = focusId ? [...body.querySelectorAll("[data-action-edit]")].find(n => n.dataset.actionEdit === focusId) : body.querySelector(".action-add");
-      target?.focus({preventScroll: true});
+      (target || body.querySelector(".action-add"))?.focus({preventScroll: true});
     }
     function commit(next, nextUndo = null, focusId = null) {
       if (update({actions: next}) === false) return false;
@@ -71,6 +80,10 @@
       const status = el("select", "field"); status.id = caption.htmlFor;
       for (const [value, label] of Object.entries(STATUSES)) { const option = el("option", "", label); option.value = value; status.append(option); }
       status.value = action?.status || "todo"; form.append(caption, status);
+      const priorityLabel = el("label", "field-label", "Priorité"); priorityLabel.htmlFor = id + "priority";
+      const priority = el("select", "field"); priority.id = priorityLabel.htmlFor;
+      for (const [value, label] of Object.entries(PRIORITIES)) { const option = el("option", "", label); option.value = value; priority.append(option); }
+      priority.value = action?.priority || "normal"; form.append(priorityLabel, priority);
       const message = el("p", "hint"); message.setAttribute("role", "status");
       const controls = el("div", "action-controls");
       const save = el("button", "button small primary", "Enregistrer l’action"); save.type = "submit";
@@ -79,7 +92,7 @@
         event.preventDefault();
         if (!title.value.trim()) { title.setCustomValidity("Saisissez une action."); title.reportValidity(); return; }
         if (due.value && !validDate(due.value)) { message.textContent = "L’échéance doit être une date valide."; return; }
-        const value = {id: action?.id || crypto.randomUUID(), title: title.value.trim(), owner: owner.value.trim(), due: due.value, status: status.value};
+        const value = {id: action?.id || crypto.randomUUID(), title: title.value.trim(), owner: owner.value.trim(), due: due.value, status: status.value, priority: priority.value};
         const next = action ? actions.map(a => a.id === action.id ? value : a) : [...actions, value];
         if (!commit(next, null, value.id)) message.textContent = "L’action n’a pas pu être enregistrée.";
       });
@@ -100,12 +113,39 @@
         commit(next, null, undo.action.id);
       })); body.append(notice);
     }
+    const lateCount = actions.filter(a => overdue(a)).length;
+    if (lateCount) body.append(el("p", "action-late", `${lateCount} action(s) en retard`));
+    const toolbar = el("div", "action-filters");
+    function filterSelect(key, label, choices) {
+      const caption = el("label", "period-label", label), select = el("select", "field");
+      for (const [value, name] of [["", "Tous"], ...choices]) { const option = el("option", "", name); option.value = value; select.append(option); }
+      select.value = filters[key] || "";
+      select.dataset.actionFilter = key;
+      select.addEventListener("change", () => {
+        filters[key] = select.value; draw(undo);
+        body.querySelector(`[data-action-filter="${key}"]`)?.focus({preventScroll: true});
+      });
+      caption.append(select); toolbar.append(caption);
+    }
+    filterSelect("status", "Statut", Object.entries(STATUSES));
+    filterSelect("priority", "Priorité", Object.entries(PRIORITIES));
+    filterSelect("owner", "Responsable", [...new Set([...actions.map(a => a.owner), filters.owner].filter(Boolean))].sort().map(v => [v, v]));
+    const lateLabel = el("label", "filter-value-option"), late = el("input"); late.type = "checkbox"; late.checked = !!filters.late;
+    late.dataset.actionFilter = "late";
+    late.addEventListener("change", () => { filters.late = late.checked; draw(undo); body.querySelector('[data-action-filter="late"]')?.focus({preventScroll: true}); });
+    lateLabel.append(late, document.createTextNode("En retard uniquement")); toolbar.append(lateLabel);
+    if (actions.length && editable) body.append(toolbar);
+    const shown = filterActions(actions, filters);
+    if (actions.length && !shown.length) body.append(el("p", "hint", "Aucune action ne correspond aux filtres."));
     const list = el("ul", "action-list");
-    for (const [index, action] of actions.entries()) {
+    for (const action of shown) {
+      const index = actions.findIndex(a => a.id === action.id);
       const item = el("li", "action-item status-" + action.status);
       item.append(el("strong", "", action.title || "Action sans titre"),
         el("p", "hint", (action.owner || "Responsable à définir") + " · " +
           (action.due ? "Échéance : " + action.due.split("-").reverse().join("/") : "Sans échéance")));
+      item.append(el("span", "action-badge priority-" + (action.priority || "normal"), "Priorité " + PRIORITIES[action.priority || "normal"]));
+      if (overdue(action)) item.append(el("span", "action-late", " · En retard"));
       if (editable) {
         const controls = el("div", "action-controls");
         const select = el("select", "field action-status"); select.setAttribute("aria-label", "Statut : " + (action.title || "Action sans titre"));
@@ -152,7 +192,7 @@
       container.append(label, select);
     }
   }
-  const api = {normalize, validDate, visibleRows, renderActions, settings};
+  const api = {PRIORITIES, overdue, filterActions, normalize, validDate, visibleRows, renderActions, settings};
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.ReportBlocks = api;
 })(globalThis);

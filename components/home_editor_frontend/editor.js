@@ -576,7 +576,7 @@
   document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && presenting) stopPresentation(); });
   function collapsedSection(block) { return sectionState.get(`${draftBoard.id}:${block.id}`) ?? block.collapsed; }
   function gridPosition(node, row, col, span = 1) {
-    node.style.gridRow = String(row + 1);
+    node.style.gridRow = String(editing ? row * 2 + 2 : row + 1);
     node.style.gridColumn = `${col + 1} / span ${span}`;
     node.dataset.row = row;
     node.dataset.col = col;
@@ -587,7 +587,7 @@
     const visible = RB.visibleRows(blocks, block => !editing && collapsedSection(block));
     // Seules les lignes exclusivement séparatrices deviennent compactes.
     // Conserver la hauteur des lignes vides et des compositions existantes.
-    canvas.style.gridTemplateRows = editing ? "" : [...visible.keys()].map(row => {
+    canvas.style.gridTemplateRows = editing ? Array.from({length: rows}, () => "auto minmax(168px, auto)").join(" ") : [...visible.keys()].map(row => {
       const items = blocks.filter((block) => block.row === row);
       return items.length && items.every((block) => ["separator", "section"].includes(block.type)) ? "minmax(0, auto)" : "minmax(90px, auto)";
     }).join(" ");
@@ -601,6 +601,21 @@
     }
     if (editing) {
       for (let row = 0; row < rows; row++) {
+        const controls = el("div", "row-controls"); controls.style.gridRow = String(row * 2 + 1); controls.style.gridColumn = "1 / -1";
+        controls.append(el("span", "", `Ligne ${row + 1}`));
+        function changeRow(next, count, target) {
+          if (!next) return;
+          blocks = next; rows = count; selectedId = null; pending = dragging = null; clearPreview(); renderCanvas(); renderInspector();
+          canvas.querySelector(`[data-row-controls="${target}"] button`)?.focus({preventScroll: true});
+          notify("Disposition modifiée. Enregistrez le rapport pour la conserver.");
+        }
+        controls.dataset.rowControls = row;
+        const insert = button("Insérer avant", "button small", () => changeRow(L.insertRow(blocks, row), rows + 1, row));
+        insert.disabled = rows >= L.MAX_ROWS;
+        const up = button("↑ Monter", "button small", () => changeRow(L.moveRow(blocks, row, row - 1), rows, row - 1)); up.disabled = row === 0;
+        const down = button("↓ Descendre", "button small", () => changeRow(L.moveRow(blocks, row, row + 1), rows, row + 1)); down.disabled = row === rows - 1;
+        for (const control of [insert, up, down]) control.setAttribute("aria-label", `${control.textContent} la ligne ${row + 1}`);
+        controls.append(insert, up, down); canvas.append(controls);
         for (let col = 0; col < L.COLS; col++) {
           if (!L.availableSpan(blocks, row, col)) continue;
           const cell = button("", "drop-cell", () => place(activePayload(), row, col), "plus");
@@ -645,7 +660,7 @@
       if (!editing && ["chart", "card"].includes(block.type)) {
         card.classList.add("data-block");
         card.addEventListener("click", (event) => {
-          if (!event.target.closest("a, button, [role=button]")) openBlockData(block, card.querySelector(".block-data-button"));
+          if (!event.target.closest("a, button, input, select, textarea, label, summary, .chart-annotations, [role=button]")) openBlockData(block, card.querySelector(".block-data-button"));
         });
       }
       card.append(renderBody(block));
@@ -661,7 +676,7 @@
   }
 
   function renderBody(block) {
-    const body = el("div", "block-body");
+    let body = el("div", "block-body");
     if (block.type === "section") {
       const toggle = button("", "section-toggle", () => {
         if (editing) return;
@@ -715,6 +730,14 @@
           body.append(legend);
         }
       }
+      if (block.type === "chart") window.ChartAnnotations.render(block, body, {
+        el, editable: !editing && !presenting, range: result.range,
+        update: patch => updateInteractiveBlock(block, patch),
+        refresh: () => {
+          const next = renderBody(block); body.replaceWith(next); body = next;
+          next.querySelector(".annotation-add")?.focus({preventScroll: true}); return next;
+        },
+      });
       if (!result.rows.length) body.append(el("p", "hint", "Aucune donnée sur cette période."));
       if (!editing) body.append(button("Voir toutes les données", "block-data-button", (event) => { event.stopPropagation(); openBlockData(block,event.currentTarget); }, "table"));
     }
@@ -817,6 +840,15 @@
         svg.append(mark);
       });
     }
+    window.ChartAnnotations.markers(block.annotations || [], series).forEach((notes, index) => {
+      if (!notes.length) return;
+      const x = xAt(index), marker = svgNode("g", {class: "annotation-marker"});
+      marker.append(svgNode("path", {d: `M${x} 38V178`, stroke: "#b17a24", "stroke-dasharray": "3 4"}),
+        svgNode("circle", {cx: x, cy: 25, r: 10, fill: "#fff3d7", stroke: "#b17a24"}),
+        svgNode("text", {x, y: 29, "text-anchor": "middle", fill: "#79511a"}, String(notes.length)),
+        svgNode("title", {}, notes.map(n => `${n.date} : ${n.text}`).join(" ; ")));
+      svg.append(marker);
+    });
     return svg;
   }
 
