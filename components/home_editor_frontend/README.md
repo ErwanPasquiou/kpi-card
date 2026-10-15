@@ -581,3 +581,20 @@ La suppression depuis la fiche peut toujours être annulée.
 Le suivi des post-it repose uniquement sur leur colonne : la case « Action terminée »,
 le badge de statut et la progression globale sont retirés. Le filtre d’avancement
 est remplacé par un filtre sur les colonnes configurées.
+
+
+### Saisie en fenêtre et annotations repliables
+
+La création et la modification des post-it et annotations se font dans une
+fenêtre modale, centrée dans la zone visible du rapport, avec défilement interne
+si nécessaire. Enregistrer applique la saisie ; Annuler, la croix et Échap
+l’abandonnent et restituent le focus. Les notes du rapport restent visibles en
+arrière-plan. Aucun changement du format sauvegardé.
+
+Le bouton d’annotation est une icône près de l’information KPI. La rubrique
+« Annotations (nombre) » est repliée par défaut ; une fois ouverte, elle est
+limitée à 300 px avec défilement. Un enregistrement ouvre la liste pour montrer
+le résultat. Modifier/Supprimer apparaissent au survol ou au focus clavier de
+l’annotation ; sur écran tactile, ces commandes restent visibles.
+`edit-dialog.js` mutualise les fenêtres et tient compte du défilement de la page
+Streamlit autour de l’iframe. Les post-it restent déplaçables entre colonnes.

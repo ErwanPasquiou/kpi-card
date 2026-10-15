@@ -505,3 +505,24 @@ textarea.field { resize: vertical; min-height: 100px; }
 .block-resize::after { content:""; display:block; height:16px; margin:auto; width:3px; border-left:1px solid #528da0; border-right:1px solid #528da0; }
 .block-resize:hover,.block-resize:focus-visible { background:#dcf1f6; outline:2px solid #4b9caf; }
 .block.resizing { z-index:5; outline:2px solid #4b9caf; user-select:none; }
+
+.metric-tools { display:flex; align-items:center; gap:4px; flex-shrink:0; }
+.annotation-add { cursor:pointer; }
+.chart-annotations > summary { cursor:pointer; color:#365773; font-size:12px; font-weight:650; padding:4px 0; }
+.chart-annotations[open] { max-height:300px; overflow-y:auto; }
+.annotation-controls { opacity:0; pointer-events:none; transition:opacity .15s; }
+.annotation-item:hover .annotation-controls,.annotation-item:focus-within .annotation-controls { opacity:1; pointer-events:auto; }
+@media (hover:none) { .annotation-controls { opacity:1; pointer-events:auto; } }
+.edit-dialog { position:fixed; left:50%; right:auto; bottom:auto; transform:translateX(-50%); margin:0; width:min(640px,calc(100vw - 40px)); box-sizing:border-box; border:1px solid #d3e2eb; border-radius:14px; padding:24px; background:#fff; color:#23485f; box-shadow:0 20px 80px #18364f40; overflow-y:auto; }
+.edit-dialog::backdrop { background:#18364f66; }
+.dialog-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px; }
+.dialog-heading h2 { margin:0; font-size:21px; }
+.dialog-close { font-size:24px; }
+.edit-dialog .field { box-sizing:border-box; width:100%; padding:10px 12px; border:1px solid #cddde6; border-radius:7px; font:inherit; color:inherit; }
+.edit-dialog textarea { min-height:140px; resize:vertical; }
+.edit-dialog .field-label { display:block; font-size:12px; font-weight:600; margin:14px 0 6px; }
+.edit-dialog .action-controls { margin-top:22px; }
+
+.dialog-settings { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 16px; }
+.edit-dialog .action-controls { position:sticky; bottom:-24px; background:#fff; padding:14px 0; border-top:1px solid #e4edf2; }
+@media (max-width:500px) { .dialog-settings { grid-template-columns:1fr; } .edit-dialog { padding:18px; } }

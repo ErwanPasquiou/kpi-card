@@ -47,23 +47,23 @@
       redraw(nextUndo,focusId); return true;
     }
     function edit(action = null, columnId = columns[0].id) {
-      body.replaceChildren(); const form=el("form","action-form");
-      form.append(el("h3","chart-heading",action ? "Modifier le post-it" : "Nouveau post-it"));
+      const form=el("form","action-form"); let modal, fieldTarget = form;
       const prefix="postit-"+(++seq);
       function field(label,key,value,type="text",max=240) {
         const caption=el("label","field-label",label);caption.htmlFor=prefix+key;
         const input=el(type==="textarea"?"textarea":"input","field");input.id=caption.htmlFor;
         if(type!=="textarea") input.type=type; else input.rows=4;
-        input.value=value||"";input.maxLength=max;form.append(caption,input);return input;
+        input.value=value||"";input.maxLength=max;const group=el("div","dialog-field");group.append(caption,input);fieldTarget.append(group);return input;
       }
       function select(label,key,choices,value) {
         const caption=el("label","field-label",label);caption.htmlFor=prefix+key;
         const input=el("select","field");input.id=caption.htmlFor;
         for(const [id,name] of choices) {const o=el("option","",name);o.value=id;input.append(o);}
-        input.value=value;form.append(caption,input);return input;
+        input.value=value;const group=el("div","dialog-field");group.append(caption,input);fieldTarget.append(group);return input;
       }
       const title=field("Titre de la note","title",action?.title);title.required=true;
       const details=field("Votre note","details",action?.details,"textarea",5000);
+      fieldTarget=el("div","dialog-settings");form.append(fieldTarget);
       const tone=select("Badge","tone",Object.entries(TONES),action?.tone||"info");
       const column=select("Colonne","column",columns.map(c=>[c.id,c.title]),action?.columnId||columnId);
       const priority=select("Priorité","priority",Object.entries(PRIORITIES),action?.priority||"normal");
@@ -71,8 +71,8 @@
       const due=field("Échéance","due",action?.due,"date");
       const controls=el("div","action-controls"),save=el("button","button small primary","Enregistrer le post-it");save.type="submit";
       const message=el("p","hint");message.setAttribute("role","status");
-      controls.append(save,button("Annuler",()=>redraw(null,action?.id)));
-      if(action) controls.append(button("Supprimer le post-it",()=>commit(actions.filter(a=>a.id!==action.id),actions)));
+      controls.append(save,button("Annuler",()=>modal.close()));
+      if(action) controls.append(button("Supprimer le post-it",()=>{if(commit(actions.filter(a=>a.id!==action.id),actions))modal.close();}));
       form.append(controls,message);
       title.addEventListener("input",()=>title.setCustomValidity(""));
       due.addEventListener("input",()=>due.setCustomValidity(""));
@@ -81,10 +81,10 @@
         if(due.value&&!validDate(due.value)){due.setCustomValidity("Saisissez une date valide.");due.reportValidity();return;}
         const value={id:action?.id||crypto.randomUUID(),title:title.value.trim(),details:details.value,tone:tone.value,
           columnId:column.value,priority:priority.value,owner:owner.value.trim(),due:due.value,status:action?.status||"todo"};
-        if(!commit(action?actions.map(a=>a.id===action.id?value:a):[...actions,value],null,value.id)) message.textContent="Le post-it n’a pas pu être enregistré.";
+        if(!commit(action?actions.map(a=>a.id===action.id?value:a):[...actions,value],null,value.id)) message.textContent="Le post-it n’a pas pu être enregistré."; else modal.close();
       });
-      form.addEventListener("keydown",e=>{if(e.key==="Escape"){e.preventDefault();e.stopPropagation();redraw(null,action?.id);}});
-      body.append(form);title.focus({preventScroll:true});
+      modal = root.EditDialog.open(action ? "Modifier le post-it" : "Nouveau post-it", form,
+        () => [...body.querySelectorAll("[data-note-id]")].find(n=>n.dataset.noteId===action?.id)?.querySelector(".postit-open") || body.querySelector(".postit-add"));
     }
     body.append(el("h3","chart-heading",block.content||"Notes et actions"));
     if(editable) {

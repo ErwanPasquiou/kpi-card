@@ -760,7 +760,8 @@
       info.setAttribute("aria-label", `Informations sur ${result.kpi.label} — nouvel onglet`);
       info.addEventListener("click", event => event.stopPropagation());
       const heading = el("div", "metric-heading");
-      heading.append(el("h3", "chart-heading", block.content || result.kpi.label), info);
+      const metricTools = el("div", "metric-tools"); metricTools.append(info);
+      heading.append(el("h3", "chart-heading", block.content || result.kpi.label), metricTools);
       body.append(heading,
         el("p", "demo-label", `${result.table.label} · Données fictives`),
         el("p", block.type === "card" ? "metric-value" : "metric-total", K.formatValue(result.value, result.kpi)));
@@ -782,7 +783,8 @@
         }
       }
       if (block.type === "chart") window.ChartAnnotations.render(block, body, {
-        el, editable: !editing && !presenting, range: result.range,
+        el, editable: !editing && !presenting, range: result.range, toolbar: metricTools,
+        focusBack: () => body.querySelector(".annotation-add"),
         update: patch => updateInteractiveBlock(block, patch),
         refresh: () => {
           const next = renderBody(block); body.replaceWith(next); body = next;
