@@ -95,6 +95,7 @@
   }
 
   function resizeFrame() {
+    scheduleSidebar();
     const surface = catalogueMode ? $("catalogue") : root;
     const height = Math.max(440, Math.ceil(surface.getBoundingClientRect().height) + 2);
     if (height !== lastHeight) {
@@ -102,6 +103,43 @@
       send("streamlit:setFrameHeight", {height});
     }
   }
+
+  // Streamlit fait défiler la page parente, pas l’iframe étirée au rapport.
+  // Le panneau reste dans sa colonne et suit la portion réellement visible.
+  let sidebarFrame = 0;
+  function scheduleSidebar() {
+    if (!sidebarFrame) sidebarFrame = requestAnimationFrame(positionSidebar);
+  }
+  function positionSidebar() {
+    sidebarFrame = 0;
+    const sidebar = $("sidebar"), workspace = $("workspace");
+    if (!editing || workspace.hidden || root.classList.contains("data-open") || window.innerWidth <= 720) {
+      sidebar.style.removeProperty("transform"); sidebar.style.removeProperty("max-height"); return;
+    }
+    let viewportHeight = window.innerHeight, frameTop = 0;
+    try {
+      if (window.frameElement) {
+        frameTop = window.frameElement.getBoundingClientRect().top;
+        viewportHeight = window.parent.innerHeight;
+      }
+    } catch (_) { /* Hors Streamlit : utiliser le défilement du document local. */ }
+    sidebar.style.maxHeight = Math.max(120, viewportHeight - 24) + "px";
+    const rect = workspace.getBoundingClientRect();
+    const offset = Math.min(Math.max(0, 12 - frameTop - rect.top), Math.max(0, rect.height - sidebar.offsetHeight));
+    sidebar.style.transform = `translateY(${Math.round(offset)}px)`;
+  }
+  window.addEventListener("scroll", scheduleSidebar, {passive: true, capture: true});
+  window.addEventListener("resize", scheduleSidebar, {passive: true});
+  try {
+    if (window.parent !== window) {
+      window.parent.addEventListener("scroll", scheduleSidebar, {passive: true, capture: true});
+      window.parent.addEventListener("resize", scheduleSidebar, {passive: true});
+      window.addEventListener("pagehide", () => {
+        window.parent.removeEventListener("scroll", scheduleSidebar, true);
+        window.parent.removeEventListener("resize", scheduleSidebar);
+      });
+    }
+  } catch (_) { /* Le document autonome n’a pas besoin d’accès à un parent. */ }
 
   function blockById(id) { return blocks.find((block) => block.id === id); }
   function lastRow() { return Math.max(-1, ...blocks.map((block) => block.row)); }
@@ -844,7 +882,12 @@
     if (!node) return;
     for (let section = node.closest("details"); section; section = section.parentElement?.closest("details")) section.open = true;
     node.focus({preventScroll: true});
-    node.scrollIntoView({block: "nearest"});
+    if (window.innerWidth > 720 && $("sidebar").contains(node)) {
+      positionSidebar();
+      const panel = $("sidebar"), box = panel.getBoundingClientRect(), field = node.getBoundingClientRect();
+      if (field.top < box.top + 12) panel.scrollTop -= box.top + 12 - field.top;
+      else if (field.bottom > box.bottom - 12) panel.scrollTop += field.bottom - box.bottom + 12;
+    } else node.scrollIntoView({block: "nearest"});
   }
 
   function inspectorSection(inspector, key, title) {
@@ -1552,6 +1595,8 @@
     resizeFrame();
   });
   new ResizeObserver(resizeFrame).observe(root);
+  new ResizeObserver(scheduleSidebar).observe($("sidebar"));
+  new ResizeObserver(scheduleSidebar).observe($("workspace"));
   new ResizeObserver(resizeFrame).observe($("catalogue"));
   send("streamlit:componentReady", {apiVersion: 1});
   if (window.parent === window) initialize({});

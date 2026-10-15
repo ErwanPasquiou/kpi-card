@@ -468,3 +468,14 @@ les anciennes valeurs sont préservées et ajoutées aux choix si nécessaire.
 Le choix du badge suit le brouillon Enregistrer / Annuler du rapport. Le filtre
 Badge du hub est temporaire, se combine avec recherche et favoris, et propose
 « Tous les badges ». Une absence de résultat affiche une aide pour retirer le filtre.
+
+
+## Panneau de modification sur les rapports longs
+
+Sur écran de plus de 720 px, le panneau suit le défilement dans sa colonne et
+reste borné à la zone de composition. Sa hauteur suit la fenêtre visible ; ses
+réglages défilent indépendamment. `editor.js` tient compte de la position de
+l’iframe dans la page Streamlit et écoute le défilement parent en capture.
+Les mises à jour sont regroupées par animation frame, les dimensions observées,
+et les écouteurs parent nettoyés à la fermeture. Le focus d’un réglage défile
+uniquement à l’intérieur du panneau. Sur mobile, le panneau reste dans le flux.

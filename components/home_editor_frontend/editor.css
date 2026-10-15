@@ -140,6 +140,7 @@ h2, h3, p { margin: 0; }
 .add-row { width: 100%; margin-top: 14px; padding: 12px; border: 1px dashed #c9dce7; border-radius: 8px; color: #5b7e93; font-size: 12px; background: transparent; }
 .add-row:hover { background: #eaf5fa; border-color: #8eb6cb; }
 .sidebar { background: #fff; border: 1px solid #dbe6ed; border-radius: 12px; box-shadow: 0 6px 22px #003b5c08; padding: 21px; }
+.editing .sidebar { align-self: start; overflow-y: auto; scrollbar-gutter: stable; overscroll-behavior: contain; }
 .panel-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: space-between; margin-bottom: 10px; }
 .panel-heading h2 { font-size: 15px; font-weight: 650; }
 .panel-label { color: #8598a7; font-size: 8px; font-weight: 700; letter-spacing: 1px; }
