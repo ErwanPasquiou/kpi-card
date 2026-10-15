@@ -459,3 +459,11 @@ Les blocs voisins limitent l’agrandissement. Réduire un tableau de post-it
 regroupe les notes des colonnes retirées dans la dernière colonne restante.
 Échap annule le geste ; Enregistrer / Annuler du rapport valide ou restaure la
 composition. Les sections et séparateurs verticaux gardent leur largeur imposée.
+
+
+Les post-it affichent uniquement leur titre, leur texte et leurs badges. Cliquer
+sur un post-it (ou Entrée/Espace au clavier) ouvre sa fiche : suppression,
+colonne de destination, responsable, échéance et autres réglages s’y trouvent.
+Le choix de colonne dans la fiche, puis Enregistrer, remplace le déplacement
+au clavier/tactile ; le glisser-déposer entre colonnes reste disponible directement.
+La suppression depuis la fiche peut toujours être annulée.

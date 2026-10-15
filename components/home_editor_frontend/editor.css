@@ -496,9 +496,6 @@ textarea.field { resize: vertical; min-height: 100px; }
 .postit-title,.postit-text { white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px; }
 .postit-title { display:block; }
 .postit-text { margin:8px 0; line-height:1.55; }
-.postit-controls { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
-.postit-controls .field { min-width:0; width:100%; font-size:11px; margin:0; }
-.postit-controls .button { font-size:10px; padding:4px 7px; }
 .postit-empty { font-size:11px; color:#718693; border:1px dashed #cbdce5; border-radius:6px; padding:18px 8px; text-align:center; }
 .postit-drop { outline:2px dashed #358ca0; background:#e4f3f5; }
 .postit-dragging { opacity:.45; }

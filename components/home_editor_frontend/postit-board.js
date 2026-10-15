@@ -73,7 +73,9 @@
       doneLabel.append(done,document.createTextNode("Action terminée"));form.append(doneLabel);
       const controls=el("div","action-controls"),save=el("button","button small primary","Enregistrer le post-it");save.type="submit";
       const message=el("p","hint");message.setAttribute("role","status");
-      controls.append(save,button("Annuler",()=>redraw(null,action?.id)));form.append(controls,message);
+      controls.append(save,button("Annuler",()=>redraw(null,action?.id)));
+      if(action) controls.append(button("Supprimer le post-it",()=>commit(actions.filter(a=>a.id!==action.id),actions)));
+      form.append(controls,message);
       title.addEventListener("input",()=>title.setCustomValidity(""));
       due.addEventListener("input",()=>due.setCustomValidity(""));
       form.addEventListener("submit",e=>{
@@ -122,7 +124,6 @@
         if(overdue(action))badges.append(el("span","action-late","En retard"));
         note.append(badges,el("strong","postit-title",action.title||"Note sans titre"));
         if(action.details)note.append(el("p","postit-text",action.details));
-        if(action.owner||action.due)note.append(el("p","hint",[action.owner,action.due?"Échéance : "+action.due.split("-").reverse().join("/"):""].filter(Boolean).join(" · ")));
         if(editable){
           const open=el("div","postit-open");open.tabIndex=0;open.setAttribute("role","button");open.setAttribute("aria-label","Modifier le post-it : "+action.title);
           open.append(...note.childNodes);note.append(open);
@@ -130,11 +131,7 @@
           note.addEventListener("keydown",e=>{if(e.target===open&&["Enter"," "].includes(e.key)){e.preventDefault();edit(action);}});
           note.draggable=true;note.addEventListener("dragstart",e=>{draggingId=action.id;e.stopPropagation();e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",action.id);note.classList.add("postit-dragging");});
           note.addEventListener("dragend",()=>{draggingId=null;note.classList.remove("postit-dragging");body.querySelectorAll(".postit-drop").forEach(n=>n.classList.remove("postit-drop"));});
-          const controls=el("div","postit-controls"),select=el("select","field");select.setAttribute("aria-label","Déplacer : "+action.title);
-          for(const c of columns){const o=el("option","",c.title);o.value=c.id;select.append(o);}select.value=column.id;
-          select.addEventListener("change",()=>commit(move(block,action.id,select.value),null,action.id));
-          const remove=button("Supprimer",()=>commit(actions.filter(a=>a.id!==action.id),actions));remove.setAttribute("aria-label","Supprimer le post-it : "+action.title);
-          controls.append(select,remove);note.append(controls);
+
         }
         lane.append(note);
       }

@@ -567,3 +567,11 @@ geste. La limite est `HomeLayout.availableSpan` (aucun chevauchement), sections
 et séparateurs verticaux exclus. Les boutons de largeur, le déplacement d’un
 bloc dans une case plus étroite et la normalisation utilisent aussi `PostitBoard.fit`
 pour conserver la contrainte nombre de colonnes <= largeur du bloc.
+
+
+Les post-it affichent uniquement leur titre, leur texte et leurs badges. Cliquer
+sur un post-it (ou Entrée/Espace au clavier) ouvre sa fiche : suppression,
+colonne de destination, responsable, échéance et autres réglages s’y trouvent.
+Le choix de colonne dans la fiche, puis Enregistrer, remplace le déplacement
+au clavier/tactile ; le glisser-déposer entre colonnes reste disponible directement.
+La suppression depuis la fiche peut toujours être annulée.
