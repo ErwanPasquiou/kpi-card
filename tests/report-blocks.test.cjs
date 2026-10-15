@@ -17,12 +17,12 @@ test('repli des sections sans mutation, y compris sections consécutives et vide
 
 test('actions : statuts, dates réelles, limites et identifiants uniques', () => {
   const action = {id:'one',title:'Valider',owner:'Équipe',due:'2028-02-29',status:'doing',priority:'normal'};
-  assert.deepEqual(R.normalize({type:'actionPlan',actions:[action]}).actions,[action]);
+  assert.deepEqual(R.normalize({type:'actionPlan',actions:[action]}).actions,[{...action,columnId:"doing",details:"",tone:"info"}]);
   assert.equal(R.normalize({type:'actionPlan',actions:[{...action,due:'2026-02-29'}]}),null);
   assert.equal(R.normalize({type:'actionPlan',actions:[action,action]}),null);
   assert.equal(R.normalize({type:'actionPlan',actions:Array.from({length:51},(_,i)=>({...action,id:String(i)}))}),null);
   assert.equal(R.normalize({type:'actionPlan',actions:[{...action,status:'unknown'}]}).actions[0].status,'todo');
-  assert.deepEqual(R.normalize({type:'actionPlan'}),{actions:[]});
+  assert.deepEqual(R.normalize({type:'actionPlan'}),{columns:[{id:'todo',title:'À faire'},{id:'doing',title:'En cours'}],actions:[]});
 });
 
 test('nouveaux blocs : sauvegarde, duplication indépendante et dimensions', () => {
@@ -80,4 +80,30 @@ test('annotations : validation, bornes temporelles et conservation après sauveg
   const saved=L.normalize({version:1,blocks:[{id:'graph',type:'chart',row:0,col:0,span:6,annotations:notes}]});
   assert.deepEqual(saved.blocks[0].annotations,notes);
   assert.deepEqual(L.normalize(JSON.parse(JSON.stringify(saved))),saved);
+});
+
+
+test('fusion des encadrés : titre, texte et badge préservés, migration idempotente', () => {
+  const raw={version:1,blocks:[{id:'old',type:'callout',row:0,col:0,span:1,heading:'Décider',content:'Texte personnalisé\nDeuxième ligne',tone:'warning'}]};
+  const saved=L.normalize(raw),block=saved.blocks[0];
+  assert.equal(block.type,'actionPlan'); assert.equal(block.columns.length,1);
+  assert.equal(block.actions[0].title,'Décider'); assert.equal(block.actions[0].details,raw.blocks[0].content);
+  assert.equal(block.actions[0].tone,'warning');assert.deepEqual(L.normalize(saved),saved);
+});
+
+test('colonnes bornées à la largeur, réduction sans perte et déplacement indépendant du statut', () => {
+  const P=require('../components/home_editor_frontend/postit-board.js');
+  const raw={type:'actionPlan',span:3,actions:[{id:'a',title:'A',status:'todo'},{id:'b',title:'B',status:'doing'},{id:'c',title:'C',status:'done'}]};
+  const board={...raw,...R.normalize(raw)};
+  assert.equal(board.columns.length,3);
+  assert.equal(board.actions[2].columnId,'done');
+  const reduced=P.fit({...board,span:1});
+  assert.equal(reduced.columns.length,1);assert.equal(reduced.actions.length,3);
+  assert.ok(reduced.actions.every(a=>a.columnId==='todo'));assert.equal(reduced.actions[2].status,'done');
+  assert.equal(P.fit({...board,span:6},6).columns.length,6);
+  const moved=P.move(board,'a','doing');assert.equal(moved[0].columnId,'doing');assert.equal(board.actions[0].columnId,'todo');
+  assert.equal(P.move(board,'a','unknown'),null);
+  assert.equal(R.normalize({...raw,columns:[{id:'a',title:'A'},{id:'a',title:'B'}]}),null);
+  assert.equal(R.normalize({...raw,columns:[]}),null);
+  assert.equal(R.normalize({...raw,columns:Array.from({length:7},(_,i)=>({id:String(i),title:'X'}))}),null);
 });

@@ -4,7 +4,7 @@
 
 KPI-Card est une application Streamlit en français. Son accueil rassemble des tableaux
 de bord personnalisables, composés de textes et titres, graphiques, cartes de chiffres clés,
-séparateurs, tableaux de données brutes et encadrés modifiables en lecture.
+séparateurs, tableaux de données brutes et post-it regroupés en colonnes.
 Un catalogue explique la définition métier et technique des indicateurs.
 
 > **État actuel : POC local avec données fictives.** L'éditeur, les objectifs et le
@@ -38,7 +38,7 @@ traitée dans Databricks ; le POC actuel sert à construire l'expérience utilis
 | Blocs | Texte (Titre 1, Titre 2 ou paragraphe), Graphique, Carte, Séparateur, Tableau de données et Encadré ; largeur de une à six colonnes selon la place disponible. |
 | Composition | Alignement du texte, séparateurs configurables, encadrés information/vigilance/décision et duplication indépendante des blocs. |
 | Tableau | Sources Ventes, Opérations ou Retours clients ; pagination 10/25/50 lignes ; tri et filtres depuis les en-têtes en lecture. Les anciens tableaux manuels sont conservés. |
-| Encadré vivant | Post-it en lecture ; un clic ouvre la saisie, enregistrer ou annuler revient au texte. |
+| Notes et actions | Post-it avec badges, priorités et échéances, déplaçables entre colonnes configurables ; anciennes notes reprises automatiquement. |
 | Filtres des blocs | Valeurs disponibles à cocher, sélection multiple et recherche ; conditions adaptées au type déclaré ou détecté de la colonne. Même périmètre pour calcul, détail et CSV. |
 | Paramétrage | Votre tableau, Ajouter un bloc et Réglages fermés à chaque ouverture de l’édition. Sous-rubriques repliables : Contenu, Données et période, Filtres, Objectif, Présentation et Disposition, selon le bloc. |
 | Graphiques | Barres, courbes, aires, paliers, points ; anneau et barres horizontales par colonne de catégorie ; choix du KPI ; période héritée du tableau ou spécifique au bloc. |
@@ -405,7 +405,7 @@ onglet du **Catalogue KPI**, sans quitter le rapport ni perdre son brouillon.
 
 La palette regroupe les blocs en **Indicateurs et graphiques**, **Données**,
 **Texte et suivi** et **Structure**. Le **Plan d’action** suit jusqu’à 50 actions
-avec responsable libre, échéance facultative, statut et progression. Le bloc se pose sans paramétrage : les actions se créent, se modifient et se
+avec responsable libre, échéance facultative, statut et progression. Le bloc propose deux colonnes par défaut : les actions se créent, se modifient et se
 suppriment directement en lecture, avec sauvegarde locale et annulation de la
 dernière suppression. En présentation, le plan reste en consultation.
 Une **Section rétractable** pleine largeur regroupe les lignes suivantes jusqu’à
@@ -436,3 +436,26 @@ locales au navigateur et restent statiques en présentation.
 En modification, les commandes de chaque ligne permettent d’insérer une ligne
 avant elle et de monter ou descendre tous ses blocs ensemble. Les changements
 suivent Enregistrer / Annuler, dans la limite des 100 lignes de la grille.
+
+
+### Post-it et redimensionnement
+
+**Notes et actions** remplace les blocs Encadré et Plan d’action dans la palette.
+Les post-it comportent un titre, un texte et un badge Information / Vigilance /
+Décision, avec priorité, responsable et échéance facultatifs. Un clic ouvre la
+saisie ; enregistrer revient au post-it. En lecture, glisser les notes entre
+colonnes ou utiliser leur choix de destination. La suppression reste annulable.
+
+En modification, régler le titre du bloc, le nombre et le nom de ses colonnes.
+Les nouveaux blocs proposent **À faire** et **En cours** (une seule colonne si le
+bloc occupe une colonne de la grille). Le maximum correspond à la largeur du
+bloc. Les anciennes notes et actions sont reprises sans perte ; les anciens
+plans peuvent conserver une troisième colonne Terminé. L’état terminé d’un
+post-it se coche dans sa fiche et reste indépendant des noms libres des colonnes.
+
+Une poignée au bord droit de chaque bloc redimensionnable permet d’ajuster sa
+largeur à la souris ou au toucher, avec les flèches gauche/droite au clavier.
+Les blocs voisins limitent l’agrandissement. Réduire un tableau de post-it
+regroupe les notes des colonnes retirées dans la dernière colonne restante.
+Échap annule le geste ; Enregistrer / Annuler du rapport valide ou restaure la
+composition. Les sections et séparateurs verticaux gardent leur largeur imposée.

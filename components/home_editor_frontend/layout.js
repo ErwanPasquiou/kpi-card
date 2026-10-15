@@ -53,7 +53,11 @@
     const blocks = [];
     const ids = new Set();
     if (value.blocks.length > COLS * MAX_ROWS) return null;
-    for (const raw of value.blocks) {
+    for (const original of value.blocks) {
+      // Reprendre chaque encadré en post-it sans perdre son titre, son texte ou son badge.
+      const raw = original?.type === "callout" ? {...original, type: "actionPlan", content: "Notes et actions",
+        actions: [{id: "legacy-note", title: original.heading || "Note", details: String(original.content ?? ""),
+          tone: original.tone, columnId: "todo", status: "todo"}]} : original;
       if (!raw || typeof raw.id !== "string" || !raw.id || raw.id.length > 100 ||
           ids.has(raw.id) || !TYPES.includes(raw.type) ||
           !Number.isInteger(raw.span) || raw.span < 1 || raw.span > COLS ||

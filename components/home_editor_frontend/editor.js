@@ -19,7 +19,7 @@
   const root = $("editor"), canvas = $("canvas");
   const definitions = {
     section: {label: "Section rétractable", hint: "Regrouper les blocs qui suivent", span: 6, content: "Nouvelle section"},
-    actionPlan: {label: "Plan d’action", hint: "Actions, responsables et échéances", span: 3, content: "Plan d’action"},
+    actionPlan: {label: "Notes et actions", hint: "Post-it et colonnes de suivi", span: 3, content: "Notes et actions"},
     verticalSeparator: {label: "Séparateur vertical", hint: "Séparer deux zones côte à côte", span: 1, content: ""},
     text: {label: "Texte", hint: "Titre 1, titre 2 ou paragraphe", span: 3, content: "Écrivez votre texte ici."},
     chart: {label: "Graphique", hint: "Un KPI dans le temps", span: 3, content: "Chiffre d’affaires HT"},
@@ -671,8 +671,59 @@
         }, "table");
         card.append(inspect);
       }
+      if (editing && !["section", "verticalSeparator"].includes(block.type)) attachResize(card, block);
       canvas.append(card);
     }
+  }
+
+  function resizeBlock(block, span) {
+    block.span = span;
+    if (block.type === "actionPlan") Object.assign(block, window.PostitBoard.fit(block));
+  }
+  function attachResize(card, block) {
+    const max = L.availableSpan(blocks, block.row, block.col, block.id);
+    const handle = button("", "block-resize", event => event.stopPropagation());
+    handle.setAttribute("role", "slider"); handle.setAttribute("aria-label", "Largeur du bloc " + definitions[block.type].label);
+    handle.setAttribute("aria-valuemin", "1"); handle.setAttribute("aria-valuemax", String(max)); handle.setAttribute("aria-valuenow", String(block.span));
+    handle.title = "Glisser pour ajuster la largeur · flèches gauche/droite au clavier";
+    let pointer = null, proposed = block.span;
+    function preview(span) {
+      proposed = Math.max(1, Math.min(max, span));
+      card.style.gridColumn = `${block.col + 1} / span ${proposed}`;
+      card.querySelector(".span-badge").textContent = `${proposed}/6`;
+      handle.setAttribute("aria-valuenow", String(proposed));
+    }
+    function finish(cancel = false) {
+      if (pointer === null) return;
+      const id = pointer; pointer = null;
+      document.removeEventListener("keydown", escape);
+      if (handle.hasPointerCapture(id)) handle.releasePointerCapture(id);
+      card.classList.remove("resizing");
+      if (!cancel) resizeBlock(block, proposed);
+      renderCanvas(); renderInspector();
+      [...canvas.querySelectorAll(".block")].find(n => n.dataset.id === block.id)?.querySelector(".block-resize")?.focus({preventScroll: true});
+      notify(cancel ? "Redimensionnement annulé." : `Largeur : ${block.span} colonne(s). Enregistrez pour conserver.`);
+    }
+    function escape(event) { if(event.key === "Escape") {event.preventDefault();event.stopPropagation();finish(true);} }
+    handle.addEventListener("pointerdown", event => {
+      if(event.button !== 0) return;
+      event.preventDefault();event.stopPropagation();pending=dragging=null;clearPreview();
+      pointer=event.pointerId;proposed=block.span;handle.setPointerCapture(pointer);card.classList.add("resizing");
+      document.addEventListener("keydown",escape);
+    });
+    handle.addEventListener("pointermove",event => {
+      if(pointer!==event.pointerId)return;
+      const gap=parseFloat(getComputedStyle(canvas).columnGap)||0, step=(canvas.getBoundingClientRect().width+gap)/6;
+      preview(Math.round((event.clientX-card.getBoundingClientRect().left+gap)/step));
+    });
+    handle.addEventListener("pointerup",()=>finish());handle.addEventListener("pointercancel",()=>finish(true));
+    handle.addEventListener("lostpointercapture",()=>finish(true));
+    handle.addEventListener("keydown",event=>{
+      if(!["ArrowLeft","ArrowRight"].includes(event.key)||pointer!==null)return;
+      event.preventDefault();event.stopPropagation();resizeBlock(block,Math.max(1,Math.min(max,block.span+(event.key==="ArrowRight"?1:-1))));
+      renderCanvas();renderInspector();[...canvas.querySelectorAll(".block")].find(n=>n.dataset.id===block.id)?.querySelector(".block-resize")?.focus({preventScroll:true});
+    });
+    card.append(handle);
   }
 
   function renderBody(block) {
@@ -857,7 +908,7 @@
     for (const node of palette.querySelectorAll("details[data-category]")) paletteState.set(node.dataset.category, node.open);
     palette.replaceChildren();
     const categories = [["Indicateurs et graphiques", ["card", "chart"]], ["Données", ["table", "manualTable"]],
-      ["Texte et suivi", ["text", "callout", "actionPlan"]], ["Structure", ["section", "separator", "verticalSeparator"]]];
+      ["Texte et suivi", ["text", "actionPlan"]], ["Structure", ["section", "separator", "verticalSeparator"]]];
     for (const [name, types] of categories) {
       const group = el("details", "palette-category"); group.dataset.category = name; group.open = paletteState.get(name) || false;
       group.append(el("summary", "", name));
@@ -966,8 +1017,7 @@
       block.content = input.value;
       renderCanvas();
     });
-    if (block.type !== "actionPlan") content.append(contentLabel, input);
-    else content.append(el("p", "hint", "Aucun paramétrage nécessaire. Enregistrez le tableau, puis ajoutez et gérez les actions directement dans le bloc."));
+    content.append(contentLabel, input);
     if (!metric) B.settings(block, content, {
       el, button, changed: renderCanvas, rebuild: renderInspector, focus: focusInspector,
     });
@@ -1090,7 +1140,7 @@
     for (let span = 1; span <= L.COLS; span++) {
       const choice = button(String(span), "width-option", () => {
         if (span > L.availableSpan(blocks, block.row, block.col, block.id)) return;
-        block.span = span;
+        resizeBlock(block, span);
         renderCanvas();
         renderInspector();
         notify(`Largeur : ${span} colonne${span > 1 ? "s" : ""}.`);
@@ -1425,11 +1475,11 @@
     if (!position) return notify("Cet emplacement est occupé. Choisissez une case libre.", true);
     const existing = payload.id ? blockById(payload.id) : null;
     const wanted = existing?.span || definitions[payload.type].span;
-    if (existing) Object.assign(existing, position);
+    if (existing) { Object.assign(existing, position); if (existing.type === "actionPlan") Object.assign(existing, window.PostitBoard.fit(existing)); }
     else {
       blocks.push({id: crypto.randomUUID(), type: payload.type, ...position,
         content: definitions[payload.type].content, chartKind: "bar",
-        ...B.normalize({type: payload.type}),
+        ...B.normalize({type: payload.type, span: position.span}),
         ...(["chart", "card"].includes(payload.type) ? {kpiId: "revenue", period: "inherit"} : {})});
     }
     selectedId = existing?.id || blocks[blocks.length - 1].id;

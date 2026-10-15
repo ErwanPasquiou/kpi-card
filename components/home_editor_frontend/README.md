@@ -70,7 +70,7 @@ du navigateur (Streamlit autorise la mise en cache de ces fichiers).
   dans le brouillon. Changer de source réinitialise tri et filtres.
 - Les anciens **Tableaux manuels** restent modifiables et duplicables (6 colonnes,
   20 lignes, 240 caractères par cellule). Ils ne sont plus proposés à l’ajout.
-- **Encadré** met en évidence une information, un point de vigilance ou une décision.
+- **Ancien Encadré (repris désormais dans Notes et actions)** mettait en évidence une information, un point de vigilance ou une décision.
   En lecture, seul le titre et le texte apparaissent comme un post-it. Cliquer sur la note
   (ou Entrée/Espace au clavier) ouvre les champs, puis **Enregistrer la note** revient
   au post-it. Annuler ou Échap ferme la saisie sans la conserver.
@@ -438,7 +438,7 @@ colonne et s’étire sur sa ligne, avec `lineStyle` continu, tirets ou pointill
 Le plan possède `actions` (maximum 50), chacune avec `id` unique dans ce bloc,
 `title` (240 caractères), `owner` (120), `due` (date civile ISO valide ou vide) et
 `status` (`todo`, `doing`, `done`). Les responsables sont de simples libellés,
-sans identité ni notification. Le bloc se pose sans paramétrage. En lecture,
+sans identité ni notification. Le bloc propose des colonnes configurables (voir la section Fusion Notes et actions). En lecture,
 ajout, modification, statut et suppression passent par `updateInteractiveBlock`
 et se sauvegardent localement ; un formulaire permet Enregistrer / Annuler, et
 la dernière suppression peut être annulée tant que son avis reste affiché.
@@ -521,3 +521,49 @@ indices sauvegardés ni les destinations du glisser-déposer.
 Les versions collection 2 et disposition 1 sont inchangées ; priorité et
 annotations sont des champs optionnels normalisés. Validation :
 `node --test tests/content-blocks.test.cjs tests/filters.test.cjs tests/report-blocks.test.cjs`.
+
+
+## Fusion Notes et actions (remplace l’ancien rendu des plans et encadrés)
+
+`postit-board.js`, chargé avant `report-blocks.js`, centralise le tableau de
+post-it, ses colonnes, sa réduction et ses déplacements. `report-blocks.js`
+conserve la validation des dates, des actions et des sections, et délègue ce
+rendu. Le type persistant reste `actionPlan`. Les champs additionnels sont
+`columns: [{id, title}]` (1 à `span`, maximum 6, titres de 80 caractères) et,
+pour chaque action, `columnId`, `details` (5 000 caractères) et `tone`
+(`info`, `warning`, `success`). Titre, priorité, responsable, échéance et statut
+historiques sont conservés. Toujours 50 post-it maximum et versions layout 1 /
+collection 2. Les identifiants de colonnes sont uniques et bornés à 100 caractères.
+
+Migration : un ancien encadré devient un bloc Notes et actions au même emplacement,
+avec son titre dans `actions[0].title`, son contenu dans `details`, et son badge
+conservé. Les anciens plans reçoivent À faire / En cours ; s’ils contiennent des
+actions terminées et occupent au moins trois colonnes, Terminé est ajoutée.
+Les anciennes actions sont réparties selon leur statut. Les nouveaux blocs vides
+commencent avec deux colonnes, ou une seule si leur largeur vaut 1. La
+normalisation est idempotente ; aucune note n’est supprimée lors d’une réduction.
+Les colonnes retirées et leurs noms disparaissent, leurs notes rejoignent la
+dernière colonne restante. Agrandir ne recrée pas les anciens noms : augmenter
+ensuite le nombre de colonnes dans les réglages. Annuler le brouillon restaure tout.
+
+Les colonnes sont des catégories libres ; la case « Action terminée » dans la
+fiche reste indépendante de la colonne. Renommer « En cours » en « Validation »
+ne modifie donc pas implicitement l’état des actions. Les déplacements changent
+seulement `columnId`. La progression et les retards respectent toujours le statut.
+Les filtres de priorité, responsable et état (à terminer/terminé/en retard) sont
+temporaires. Les compteurs de colonne montrent les notes visibles / totales.
+
+En lecture, saisie/suppression/déplacement passent par `updateInteractiveBlock`.
+Le glisser-déposer natif ne transporte qu’un identifiant issu du bloc courant ;
+un dépôt externe ou dans un autre bloc n’est pas accepté. Un sélecteur de
+colonne assure le même déplacement au clavier/tactile. Les contrôles d’édition
+restent absents en présentation et en modification du rapport. Les colonnes
+étroites défilent horizontalement pour préserver la lisibilité des post-it.
+
+Le redimensionnement est horizontal, par pas d’une colonne. La poignée utilise
+Pointer Events/capture, une prévisualisation sans mutation du modèle puis valide
+au relâchement ; Échap, annulation du pointeur ou perte de capture annulent le
+geste. La limite est `HomeLayout.availableSpan` (aucun chevauchement), sections
+et séparateurs verticaux exclus. Les boutons de largeur, le déplacement d’un
+bloc dans une case plus étroite et la normalisation utilisent aussi `PostitBoard.fit`
+pour conserver la contrainte nombre de colonnes <= largeur du bloc.

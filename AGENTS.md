@@ -65,6 +65,16 @@
 
 - Les badges sont centralisés dans `Dashboards.BADGES` ; conserver les catégories
   historiques et combiner le filtre Badge avec recherche et favoris. Le plan
-  d’action n’a pas de formulaire dans l’inspecteur : son CRUD fonctionne en lecture
+  d’action est fusionné avec les encadrés dans « Notes et actions ». Les colonnes
+  se configurent dans l’inspecteur ; le CRUD des post-it fonctionne en lecture
   via `updateInteractiveBlock`, avec sauvegarde locale et annulation des saisies.
   En présentation et en édition du rapport, les actions restent en consultation.
+
+- `postit-board.js` porte les colonnes et les post-it. Au plus `span` colonnes,
+  deux par défaut (une si largeur 1). Réduire la largeur ou le nombre de colonnes
+  regroupe les notes dans la dernière colonne sans les supprimer. Les anciens
+  encadrés migrent dans `layout.js` sans perdre texte, titre ni badge ; les anciens
+  statuts sont conservés. La colonne et l’état terminé sont indépendants.
+- Les poignées de largeur suivent les mêmes contraintes que les réglages :
+  six colonnes, pas de chevauchement, section toujours 6, séparateur vertical 1.
+  Préserver le clavier, la capture pointeur, Échap et Annuler le brouillon.

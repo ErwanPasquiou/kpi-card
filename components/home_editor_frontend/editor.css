@@ -479,3 +479,32 @@ textarea.field { resize: vertical; min-height: 100px; }
 .annotation-item p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0; }
 .annotation-form .field-label { display: block; margin: 10px 0 5px; }
 .annotation-form .field { width: 100%; }
+
+/* Post-it regroupés, avec conservation des colonnes sur les petits écrans. */
+.postit-board { display: grid; grid-template-columns: repeat(var(--postit-columns), minmax(140px, 1fr)); gap: 12px; overflow-x: auto; padding: 4px 2px 12px; }
+.postit-column { min-width: 0; background: #f3f7fa; border: 1px solid #e0e8ee; border-radius: 9px; padding: 10px; }
+.postit-column-title { margin: 0 0 14px; font-size: 12px; color: #365773; overflow-wrap: anywhere; }
+.postit { --note-color:#287a9f; background:#edf6fb; border:1px solid #dce9ee; border-top:3px solid var(--note-color); border-radius:7px; padding:12px; margin-bottom:12px; box-shadow:0 3px 8px #1a35400a; min-width:0; }
+.postit.tone-warning { --note-color:#a76b19; background:#fff7e8; }
+.postit.tone-success { --note-color:#23826e; background:#edf8f3; }
+.postit[draggable=true] { cursor:grab; }
+.postit[draggable=true]:active { cursor:grabbing; }
+.postit-open:focus-visible { outline:2px solid #3c9eae; outline-offset:3px; }
+.postit-badges { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:10px; }
+.postit-badges .callout-label { color:var(--note-color); font-size:10px; }
+.postit-badges .action-badge { font-size:10px; padding:3px 6px; }
+.postit-title,.postit-text { white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px; }
+.postit-title { display:block; }
+.postit-text { margin:8px 0; line-height:1.55; }
+.postit-controls { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+.postit-controls .field { min-width:0; width:100%; font-size:11px; margin:0; }
+.postit-controls .button { font-size:10px; padding:4px 7px; }
+.postit-empty { font-size:11px; color:#718693; border:1px dashed #cbdce5; border-radius:6px; padding:18px 8px; text-align:center; }
+.postit-drop { outline:2px dashed #358ca0; background:#e4f3f5; }
+.postit-dragging { opacity:.45; }
+.postit-filters { margin:12px 0; font-size:12px; }
+.postit-filters > label { display:inline-flex; flex-direction:column; margin:10px 8px 5px 0; max-width:170px; }
+.block-resize { position:absolute; right:2px; bottom:14px; z-index:4; width:18px; height:38px; padding:0; border:1px solid #b5d3de; border-radius:7px; background:#fff; cursor:ew-resize; touch-action:none; }
+.block-resize::after { content:""; display:block; height:16px; margin:auto; width:3px; border-left:1px solid #528da0; border-right:1px solid #528da0; }
+.block-resize:hover,.block-resize:focus-visible { background:#dcf1f6; outline:2px solid #4b9caf; }
+.block.resizing { z-index:5; outline:2px solid #4b9caf; user-select:none; }
